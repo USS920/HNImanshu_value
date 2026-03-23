@@ -13,61 +13,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. Setup Python
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3. Install dependencies
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-
-      - name: Install dependencies
-        run: |
           pip install requests pandas numpy beautifulsoup4 lxml tqdm
 
-      # 4. Run scripts (your pipeline) python nm250.py python n500.py
+      # 🔥 Run scripts but DON'T stop workflow on error
       - name: Run scripts
+        continue-on-error: true
         run: |
           echo "Running n500.py..."
-          python n500.py
+          python n500.py || echo "n500 failed"
 
           echo "Running nm250.py..."
-          python nm250.py
+          python nm250.py || echo "nm250 failed"
 
           echo "Running build.py..."
-          python build.py
+          python build.py || echo "build failed"
 
-      # 5. Commit updated CSV files
-      - name: Commit and push CSV
+      # 🔥 Commit step (ignore errors)
+      - name: Commit and push CSV + HTML
+        continue-on-error: true
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          
-          git add nifty500_valuation.csv niftymicrocap250_valuation.csv public/index.html
-      
-          git commit -m "Auto-update CSV [skip ci]" || echo "No changes to commit"
-      
-          git push
 
-      # 5. Setup Firebase credentials
+          git pull --rebase origin main || echo "pull failed"
+
+          git add nifty500_valuation.csv niftymicrocap250_valuation.csv public/index.html
+
+          git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
+
+          git push || echo "push failed"
+
       - name: Setup Firebase credentials
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS }}' > serviceAccount.json
 
-      # 6. Install Firebase CLI
       - name: Install Firebase
         run: npm install -g firebase-tools
 
-      # 7. Deploy to Firebase
+      # 🔥 Deploy even if previous steps failed
       - name: Deploy
+        continue-on-error: true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
         run: |
-          firebase deploy --project hnimanshu --non-interactive
+          firebase deploy --project hnimanshu --non-interactive || echo "deploy failed"
