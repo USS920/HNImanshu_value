@@ -32,14 +32,14 @@ jobs:
         run: |
           pip install requests pandas numpy beautifulsoup4 lxml tqdm
 
-      # 4. Run scripts (your pipeline)
+      # 4. Run scripts (your pipeline) python nm250.py python n500.py
       - name: Run scripts
         run: |
           echo "Running n500.py..."
-          python n500.py
+          
 
           echo "Running nm250.py..."
-          python nm250.py
+          
 
           echo "Running build.py..."
           python build.py
