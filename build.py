@@ -146,68 +146,7 @@ def build(deploy: bool = False):
     print(f"  Output  : public/index.html  ({size_kb} KB)")
     print(f"  N500    : {len(data_n500)} stocks")
     print(f"  MC250   : {len(data_mc250)} stocks")
-
-    deploy = True
-    if deploy:
-        print(f"\n  Deploying to Firebase...")
-        try:
-            result = subprocess.run(
-                ["firebase", "deploy", "--only", "hosting"],
-                cwd=BASE, check=True, text=True, capture_output=True
-            )
-            print("  ✓ Firebase deploy complete!")
-            for line in result.stdout.splitlines():
-                if "http" in line.lower() or "hosting" in line.lower():
-                    print(f"    {line.strip()}")
-        except FileNotFoundError:
-            print("  ERROR: firebase CLI not found.")
-            print("  Install: npm install -g firebase-tools")
-            sys.exit(1)
-        except subprocess.CalledProcessError as e:
-            print("  ERROR: firebase deploy failed.")
-            if e.stderr: print(e.stderr[-500:])
-
-        try:
-            result = subprocess.run(
-                ["firebase", "deploy", "--only", "hosting"],
-                cwd=BASE, check=True, text=True, capture_output=True
-            )
-            print("  ✓ Firebase deploy complete!")
-            for line in result.stdout.splitlines():
-                if "http" in line.lower() or "hosting" in line.lower():
-                    print(f"    {line.strip()}")
-        except FileNotFoundError:
-            print("  ERROR: firebase CLI not found.")
-            print("  Install: npm install -g firebase-tools")
-            sys.exit(1)
-        except subprocess.CalledProcessError as e:
-            print("  ERROR: firebase deploy failed.")
-            if e.stderr: print(e.stderr[-500:])
-
-        try:
-            result = subprocess.run(
-                ["firebase", "deploy", "--only", "hosting"],
-                cwd=BASE, check=True, text=True, capture_output=True
-            )
-            print("  ✓ Firebase deploy complete!")
-            for line in result.stdout.splitlines():
-                if "http" in line.lower() or "hosting" in line.lower():
-                    print(f"    {line.strip()}")
-        except FileNotFoundError:
-            print("  ERROR: firebase CLI not found.")
-            print("  Install: npm install -g firebase-tools")
-            sys.exit(1)
-        except subprocess.CalledProcessError as e:
-            print("  ERROR: firebase deploy failed.")
-            if e.stderr: print(e.stderr[-500:])
-
-
-
-    else:
-        print(f"\n  To deploy: firebase deploy")
-        print(f"  Or:        python3 build.py --deploy\n")
-
-
+  
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="HNImanshu — build index.html from CSVs")
     ap.add_argument("--deploy", action="store_true",
