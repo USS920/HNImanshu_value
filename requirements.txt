@@ -1,1 +1,7 @@
 flask
+requests
+pandas
+numpy
+beautifulsoup4
+lxml
+tqdm
