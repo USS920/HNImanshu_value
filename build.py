@@ -40,12 +40,12 @@ urls = {
     "nifty500_valuation.csv": "https://csvhsv.s3.ap-south-1.amazonaws.com/web/nifty500_valuation.csv",
     "niftymicrocap250_valuation.csv": "https://csvhsv.s3.ap-south-1.amazonaws.com/web/niftymicrocap250_valuation.csv"
 }
-
+"""
 for filename, url in urls.items():
     r = requests.get(url)
     with open(filename, "wb") as f:
         f.write(r.content)
-
+"""
 BASE        = Path(__file__).parent
 TEMPLATE    = BASE / "HNImanshu_template.html"
 OUTPUT      = BASE / "public" / "index.html"
