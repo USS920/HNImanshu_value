@@ -41,6 +41,18 @@ jobs:
           echo "Running build.py..."
           python build.py
 
+      # 5. Commit updated CSV files
+      - name: Commit and push CSV
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+      
+          git add nifty500_valuation.csv niftymicrocap250_valuation.csv
+      
+          git commit -m "Auto-update CSV [skip ci]" || echo "No changes to commit"
+      
+          git push
+
       # 5. Setup Firebase credentials
       - name: Setup Firebase credentials
         run: |
