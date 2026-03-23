@@ -46,8 +46,8 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-      
-          git add nifty500_valuation.csv niftymicrocap250_valuation.csv
+          
+          git add nifty500_valuation.csv niftymicrocap250_valuation.csv public/index.html
       
           git commit -m "Auto-update CSV [skip ci]" || echo "No changes to commit"
       
