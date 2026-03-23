@@ -39,20 +39,31 @@ jobs:
           echo "Running build.py..."
           python build.py || echo "build failed"
 
-      # 🔥 Commit step (ignore errors)
+      # ✅ FIXED COMMIT STEP
       - name: Commit and push CSV + HTML
         continue-on-error: true
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
+          git config --global pull.rebase false   # ✅ FIX
 
-          git pull --rebase origin main || echo "pull failed"
+          # Save any local changes safely
+          git stash || echo "nothing to stash"
 
+          # Pull latest changes safely
+          git pull origin main || echo "pull failed"
+
+          # Re-apply local changes
+          git stash pop || echo "nothing to pop"
+
+          # Add files
           git add nifty500_valuation.csv niftymicrocap250_valuation.csv public/index.html
 
+          # Commit only if changes exist
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
 
-          git push || echo "push failed"
+          # Push safely
+          git push origin main || echo "push failed"
 
       - name: Setup Firebase credentials
         run: |
