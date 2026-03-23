@@ -25,6 +25,10 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Install dependencies
+        run: |
+          pip install requests pandas numpy beautifulsoup4 lxml tqdm
+
       # 4. Run scripts (your pipeline)
       - name: Run scripts
         run: |
