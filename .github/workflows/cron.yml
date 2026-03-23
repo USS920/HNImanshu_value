@@ -1,0 +1,54 @@
+name: Daily Build & Deploy
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # 4. Run scripts (your pipeline)
+      - name: Run scripts
+        run: |
+          echo "Running n500.py..."
+          python n500.py
+
+          echo "Running nm250.py..."
+          python nm250.py
+
+          echo "Running build.py..."
+          python build.py
+
+      # 5. Setup Firebase credentials
+      - name: Setup Firebase credentials
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > serviceAccount.json
+
+      # 6. Install Firebase CLI
+      - name: Install Firebase
+        run: npm install -g firebase-tools
+
+      # 7. Deploy to Firebase
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
+        run: |
+          firebase deploy --project hnimanshu
