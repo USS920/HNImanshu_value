@@ -67,4 +67,4 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
         run: |
-          firebase deploy --project hnimanshu
+          firebase deploy --project hnimanshu --non-interactive
