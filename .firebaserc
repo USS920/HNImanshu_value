@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "hnimanshu"
+  },
+  "targets": {
+    "hnimanshu": {
+      "hosting": {
+        "mysite": [
+          "hnimanshu-value"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
