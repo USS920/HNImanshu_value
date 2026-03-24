@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "35 15 * * *"
   workflow_dispatch:
 
 jobs:
@@ -27,6 +27,14 @@ jobs:
           pip install requests pandas numpy beautifulsoup4 lxml tqdm
 
       # 🔥 Run scripts but DON'T stop workflow on error
+      # 📩 Telegram Alert (ALWAYS RUNS)
+      - name: Send Telegram Alert
+        if: always()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
+          -d chat_id="-1002683944312" \
+          -d text="Website updation started..."
+
       - name: Run scripts
         continue-on-error: true
         run: |
