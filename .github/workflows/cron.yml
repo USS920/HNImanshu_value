@@ -45,24 +45,16 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git config --global pull.rebase false   # ✅ FIX
+          git config --global pull.rebase false
 
-          # Save any local changes safely
           git stash || echo "nothing to stash"
-
-          # Pull latest changes safely
           git pull origin main || echo "pull failed"
-
-          # Re-apply local changes
           git stash pop || echo "nothing to pop"
 
-          # Add files
           git add nifty500_valuation.csv niftymicrocap250_valuation.csv public/index.html
 
-          # Commit only if changes exist
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
 
-          # Push safely
           git push origin main || echo "push failed"
 
       - name: Setup Firebase credentials
@@ -79,3 +71,11 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
         run: |
           firebase deploy --project hnimanshu --non-interactive || echo "deploy failed"
+
+      # 📩 Telegram Alert (ALWAYS RUNS)
+      - name: Send Telegram Alert
+        if: always()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
+          -d chat_id="-1002683944312" \
+          -d text="https://hnimanshu-value.web.app/ updated from Action - [Daily Build And Deploy] from https://github.com/USS920/HNImanshu_value/actions"
