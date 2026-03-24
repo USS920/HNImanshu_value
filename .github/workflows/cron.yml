@@ -34,7 +34,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="Website updation started..."
+          -d text="Website updation started...%0A%0AIt will take 30 minutes.."
 
       - name: Run scripts
         continue-on-error: true
@@ -87,4 +87,4 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="https://hnimanshu-value.web.app/ \n\nUpdated from Action - [Daily Build And Deploy] \n\nFrom https://github.com/USS920/HNImanshu_value/actions\n\nEdit here: https://github.com/USS920/HNImanshu_value/blob/main/.github/workflows/cron.yml"
+          -d text="https://hnimanshu-value.web.app/ %0A%0AUpdated from Action - [Daily Build And Deploy] %0A%0AFrom https://github.com/USS920/HNImanshu_value/actions%0A%0AEdit here: https://github.com/USS920/HNImanshu_value/blob/main/.github/workflows/cron.yml"
