@@ -78,4 +78,4 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="https://hnimanshu-value.web.app/ updated from Action - [Daily Build And Deploy] from https://github.com/USS920/HNImanshu_value/actions"
+          -d text="https://hnimanshu-value.web.app/ \n\nUpdated from Action - [Daily Build And Deploy] \n\nfrom https://github.com/USS920/HNImanshu_value/actions\n\nEdit here: https://github.com/USS920/HNImanshu_value/blob/main/.github/workflows/cron.yml"
