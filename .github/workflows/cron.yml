@@ -1,6 +1,5 @@
-# keep-alive
-
 name: Daily Build & Deploy
+# keep-alive
 
 permissions:
   contents: write
