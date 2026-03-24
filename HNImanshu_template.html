@@ -405,6 +405,29 @@ body.day .toggle-thumb { transform: translateX(16px); }
   color: #e05060;
 }
 
+/* Last updated — sidebar bottom */
+#sb-last-updated {
+  margin-top: auto;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+}
+.sb-lu-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 3px;
+}
+.sb-lu-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.3px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
 /* ═══════════════════════════════════════════════
    MAIN CONTENT
 ═══════════════════════════════════════════════ */
@@ -853,6 +876,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="hstat"><div class="hstat-val" id="hs-best">—</div><div class="hstat-lbl">A/B+</div></div>
   </div>
 
+
   <!-- Theme toggle — inline in header, right side -->
   <div id="theme-toggle">
     <span class="toggle-icon">🌙</span>
@@ -885,6 +909,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
         <input type="text" class="lookup-input" id="lookup-inp" placeholder="Name or symbol…" autocomplete="off">
         <div class="lookup-dd" id="lookup-dd"></div>
       </div>
+    </div>
+    <div id="sb-last-updated">
+      <div class="sb-lu-label">Last updated</div>
+      <div class="sb-lu-val">%%LAST_UPDATED_PLACEHOLDER%%</div>
     </div>
   </div>
 
