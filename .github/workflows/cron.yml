@@ -28,7 +28,7 @@ jobs:
 
       # 🔥 Run scripts but DON'T stop workflow on error
       # 📩 Telegram Alert (ALWAYS RUNS)
-      - name: Send Telegram Alert
+      - name: Send Telegram Alert Before
         if: always()
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
