@@ -40,12 +40,12 @@ urls = {
     "nifty500_valuation.csv": "https://csvhsv.s3.ap-south-1.amazonaws.com/web/nifty500_valuation.csv",
     "niftymicrocap250_valuation.csv": "https://csvhsv.s3.ap-south-1.amazonaws.com/web/niftymicrocap250_valuation.csv"
 }
-"""
-for filename, url in urls.items():
-    r = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(r.content)
-"""
+
+#for filename, url in urls.items():
+#    r = requests.get(url)
+#    with open(filename, "wb") as f:
+#        f.write(r.content)
+
 BASE        = Path(__file__).parent
 TEMPLATE    = BASE / "HNImanshu_template.html"
 OUTPUT      = BASE / "public" / "index.html"
@@ -128,6 +128,10 @@ def build(deploy: bool = False):
     data_mc250 = load_csv(MC250_CSV, MC250_NAME_COL, "Microcap 250")
 
     print("\n  Building HTML...")
+    from datetime import timezone, timedelta
+    IST = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(IST)
+    last_updated_str = now_ist.strftime("%d-%b-%y\n%I:%M:%S %p")
     datasets_js = (
         "const DATASETS = {\n"
         f"  n500:  {json.dumps(data_n500,  ensure_ascii=False, separators=(',', ':'))},\n"
@@ -135,6 +139,7 @@ def build(deploy: bool = False):
         "};"
     )
     html = template.replace(PLACEHOLDER, datasets_js)
+    html = html.replace("%%LAST_UPDATED_PLACEHOLDER%%", last_updated_str)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(html, encoding="utf-8")
@@ -146,7 +151,16 @@ def build(deploy: bool = False):
     print(f"  Output  : public/index.html  ({size_kb} KB)")
     print(f"  N500    : {len(data_n500)} stocks")
     print(f"  MC250   : {len(data_mc250)} stocks")
-  
+
+#    deploy = True
+    if deploy:
+        print(f"\n  Deploying to Firebase...")
+
+    else:
+        print(f"\n  To deploy: firebase deploy")
+        print(f"  Or:        python3 build.py --deploy\n")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="HNImanshu — build index.html from CSVs")
     ap.add_argument("--deploy", action="store_true",
