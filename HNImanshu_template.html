@@ -439,20 +439,52 @@ body.day .toggle-thumb { transform: translateX(16px); }
   padding: 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
   flex-shrink: 0; transition: background var(--transition), border-color var(--transition);
 }
+
+/* Search wrapper with inline clear X */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
 .search-input {
-  padding: 6px 12px; background: var(--bg);
+  padding: 6px 28px 6px 12px; /* right padding for X button */
+  background: var(--bg);
   border: 1px solid var(--border); border-radius: 6px;
   color: var(--text); font-size: 12px; outline: none; width: 200px;
   transition: border-color 0.12s, background var(--transition), color var(--transition);
 }
 .search-input:focus { border-color: var(--accent); }
 .search-input::placeholder { color: var(--text3); }
+
+/* Inline X to clear search */
+.search-clear-btn {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+  display: none; /* shown via JS when input has value */
+  transition: color 0.12s;
+  border-radius: 3px;
+}
+.search-clear-btn:hover { color: var(--orange); }
+.search-clear-btn.visible { display: block; }
+
 .result-count { font-family: var(--mono); font-size: 10px; color: var(--text3); }
 .result-count span { color: var(--accent); }
+
+/* Clear All filters button — moved next to search */
 .clear-btn {
   padding: 5px 10px; border: 1px solid var(--border2); border-radius: 5px;
   background: transparent; color: var(--text2); font-size: 11px;
-  transition: all 0.12s; margin-left: auto;
+  transition: all 0.12s; flex-shrink: 0;
 }
 .clear-btn:hover { border-color: var(--orange); color: var(--orange); }
 
@@ -498,6 +530,7 @@ th.sorted-asc, th.sorted-desc { color: var(--accent); }
 .col-rcagr { width: 68px; }
 .col-pcagr { width: 68px; }
 .col-prom  { width: 60px; }
+.col-piot  { width: 56px; }
 .col-score { width: 56px; }
 
 td {
@@ -581,6 +614,11 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .n-neu { font-family: var(--mono); color: var(--text2); }
 .n-hi  { font-family: var(--mono); color: var(--text); }
 
+/* Piotroski score colour coding */
+.piot-hi  { font-family: var(--mono); color: var(--A); font-weight: 700; }   /* 7–9 */
+.piot-mid { font-family: var(--mono); color: var(--C); }                      /* 4–6 */
+.piot-lo  { font-family: var(--mono); color: var(--D); }                      /* 0–3 */
+
 /* ═══════════════════════════════════════════════
    MOBILE LAYOUT
 ═══════════════════════════════════════════════ */
@@ -601,7 +639,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
   /* Universe switch compact */
   .universe-switch { margin-left: 4px; }
-  .uni-btn { padding: 4px 8px; font-size: 9px; }
+  .uni-btn { padding: 4px 7px; font-size: 9px; }
 
   /* Theme toggle on mobile: right side, compact */
   #theme-toggle {
@@ -617,7 +655,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
   /* Mobile toolbar */
   #toolbar { padding: 6px 10px; gap: 6px; }
-  .search-input { flex: 1; width: auto; min-width: 0; }
+  .search-wrap { flex: 1; }
+  .search-input { flex: 1; width: 100%; min-width: 0; }
   .result-count { display: none; }
 
   /* Filter button (mobile) */
@@ -658,7 +697,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   /* Mobile table: allow natural width so it scrolls horizontally */
   #main-table {
     table-layout: auto !important;
-    min-width: 900px;
+    min-width: 1000px;
   }
 
   /* Mobile table column widths — compact but readable */
@@ -680,6 +719,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #main-table .col-rcagr { min-width: 60px; }
   #main-table .col-pcagr { min-width: 60px; }
   #main-table .col-prom  { min-width: 54px; }
+  #main-table .col-piot  { min-width: 50px; }
   #main-table .col-score { min-width: 50px; }
 
   /* Detail panel full-screen on mobile */
@@ -716,7 +756,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     flex-shrink: 0;
     cursor: grab;
   }
-  /* Invisible larger touch area around the handle */
   .dp-drag-handle::before {
     content: '';
     display: block;
@@ -728,7 +767,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   }
   #detail-panel .dp-inner { padding: 10px 14px 28px; }
   #detail-panel .dp-metrics { grid-template-columns: repeat(3, 1fr) !important; }
-  #detail-panel .dp-header { margin-bottom: 10px; }
   #detail-panel .dp-header { margin-bottom: 10px; }
   #detail-panel .dp-metrics .dm { min-width: 100px; }
   .dp-close { font-size: 26px; font-weight: 200; padding: 2px 4px 2px 12px; }
@@ -867,6 +905,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
   <div class="universe-switch">
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
+    <button class="uni-btn" id="btn-sc250">Smallcap 250</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
   </div>
 
@@ -875,7 +914,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="hstat"><div class="hstat-val" id="hs-dv">—</div><div class="hstat-lbl">Deep Value</div></div>
     <div class="hstat"><div class="hstat-val" id="hs-best">—</div><div class="hstat-lbl">A/B+</div></div>
   </div>
-
 
   <!-- Theme toggle — inline in header, right side -->
   <div id="theme-toggle">
@@ -921,9 +959,14 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <!-- Toolbar -->
     <div id="toolbar">
       <button id="filter-fab">⚙</button>
-      <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
+      <!-- Search with inline clear -->
+      <div class="search-wrap">
+        <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
+        <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search">✕</button>
+      </div>
+      <!-- Clear All filters — right next to search -->
+      <button class="clear-btn" id="clear-btn">✕ Clear All</button>
       <div class="result-count">Showing <span id="rc-span">—</span></div>
-      <button class="clear-btn" id="clear-btn">✕ Clear</button>
     </div>
 
     <!-- Mobile count bar -->
@@ -955,6 +998,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
             <th class="col-rcagr" data-col="REVENUE_CAGR_3YR_PCT"  data-dir="desc" >RevCAGR</th>
             <th class="col-pcagr" data-col="PAT_CAGR_3YR_PCT"      data-dir="desc" >PATCAGR</th>
             <th class="col-prom"  data-col="SH_PROMOTER_PCT_LATEST" data-dir="desc" >Promo%</th>
+            <th class="col-piot"  data-col="PIOTROSKI_SCORE"        data-dir="desc" >Piotroski</th>
             <th class="col-score" data-col="FINAL_SCORE"            data-dir="desc" >Score</th>
           </tr>
         </thead>
@@ -1039,6 +1083,7 @@ const SORT_OPTIONS = [
   {col:'ROCE_PCT',dir:'desc',   label:'ROCE %'},
   {col:'PE',dir:'asc',          label:'Lowest P/E'},
   {col:'DIV_YIELD_PCT',dir:'desc',label:'Dividend Yield'},
+  {col:'PIOTROSKI_SCORE',dir:'desc',label:'Piotroski Score'},
   {col:'FINAL_SCORE',dir:'desc',label:'Score'},
 ];
 
@@ -1064,6 +1109,7 @@ function switchUniverse(u){
   universe=u; rawData=DATASETS[u];
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.getElementById('search-inp').value='';
+  updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
   closeDetail();
@@ -1071,8 +1117,19 @@ function switchUniverse(u){
   const th=document.querySelector('th[data-col="FINAL_RANK"]');
   if(th) th.classList.add('sorted-asc');
   document.getElementById('btn-n500').classList.toggle('active',u==='n500');
+  document.getElementById('btn-sc250').classList.toggle('active',u==='sc250');
   document.getElementById('btn-mc250').classList.toggle('active',u==='mc250');
   buildSidebar(); buildMobileSheet(); run();
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH CLEAR BUTTON (inline X)
+// ═══════════════════════════════════════════════
+function updateSearchClearBtn(){
+  const btn=document.getElementById('search-clear-btn');
+  const inp=document.getElementById('search-inp');
+  if(!btn||!inp) return;
+  btn.classList.toggle('visible', inp.value.length > 0);
 }
 
 // ═══════════════════════════════════════════════
@@ -1152,18 +1209,6 @@ function buildMobileSheet(){
 }
 function openFilters(){ buildMobileSheet(); document.getElementById('filter-sheet').classList.add('open'); document.getElementById('filter-overlay').classList.add('visible'); }
 function closeFilters(){ document.getElementById('filter-sheet').classList.remove('open'); document.getElementById('filter-overlay').classList.remove('visible'); }
-function sheetToggleGrade(g){ toggleGrade(g); buildMobileSheet(); }
-function sheetToggleFV(f){ toggleFV(f); buildMobileSheet(); }
-function sheetSort(col,dir,label,e){
-  sortCol=col; sortDir=dir;
-  clearSortHeaders();
-  const th=document.querySelector(`th[data-col="${col}"]`);
-  if(th) th.classList.add(dir==='asc'?'sorted-asc':'sorted-desc');
-  const ml=document.getElementById('mc-sort-label'); if(ml) ml.textContent='Sorted by '+label;
-  document.querySelectorAll('.sheet-sort-btn').forEach(b=>b.classList.remove('active'));
-  if(e && e.target) e.target.classList.add('active');
-  run();
-}
 
 // ═══════════════════════════════════════════════
 // FILTER & SORT
@@ -1178,10 +1223,11 @@ function toggleFV(f){
   document.querySelectorAll('.fv-pill').forEach(b=>b.classList.toggle('active',activeFVs.has(b.dataset.fv)));
   run();
 }
-function handleSearch(v){ searchQ=v.toLowerCase(); run(); }
+function handleSearch(v){ searchQ=v.toLowerCase(); updateSearchClearBtn(); run(); }
 function clearAll(){
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.getElementById('search-inp').value='';
+  updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
   // Reset sort to rank
@@ -1231,6 +1277,17 @@ function run(){
 }
 
 // ═══════════════════════════════════════════════
+// PIOTROSKI HELPER
+// ═══════════════════════════════════════════════
+function piotClass(v){
+  if(v==null||v==='') return 'n-neu';
+  const n=+v;
+  if(n>=7) return 'piot-hi';
+  if(n>=4) return 'piot-mid';
+  return 'piot-lo';
+}
+
+// ═══════════════════════════════════════════════
 // RENDER TABLE
 // ═══════════════════════════════════════════════
 function renderTable(data){
@@ -1245,6 +1302,8 @@ function renderTable(data){
     const up=s.UPSIDE_PCT, mos=s.MARGIN_OF_SAFETY_PCT;
     const fv=FV_MAP[s.FV_GRADE]||{cls:'fv-FP',label:s.FV_GRADE||'—'};
     const sel=s.SYMBOL===selectedSym?' row-selected':'';
+    const piotVal = s.PIOTROSKI_SCORE!=null ? s.PIOTROSKI_SCORE : '—';
+    const piotCls = s.PIOTROSKI_SCORE!=null ? piotClass(s.PIOTROSKI_SCORE) : 'n-neu';
     rows[i]=`<tr class="${sel}" data-sym="${s.SYMBOL}">
       <td class="n-neu">${s.FINAL_RANK!=null?'#'+s.FINAL_RANK:'—'}</td>
       <td title="${esc(s.COMPANY_NAME)}"><b style="font-size:11.5px">${esc(s.COMPANY_NAME||'—')}</b><br><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${s.SYMBOL}</span></td>
@@ -1264,6 +1323,7 @@ function renderTable(data){
       <td class="${(s.REVENUE_CAGR_3YR_PCT||0)>10?'n-pos':'n-neu'}">${f1(s.REVENUE_CAGR_3YR_PCT)}%</td>
       <td class="${(s.PAT_CAGR_3YR_PCT||0)>10?'n-pos':'n-neu'}">${f1(s.PAT_CAGR_3YR_PCT)}%</td>
       <td class="n-neu">${f1(s.SH_PROMOTER_PCT_LATEST)}%</td>
+      <td class="${piotCls}">${piotVal}</td>
       <td style="font-family:var(--mono);color:var(--accent);font-weight:700">${f1(s.FINAL_SCORE)}</td>
     </tr>`;
   }
@@ -1298,6 +1358,7 @@ function showDetail(sym){
     {l:'Rev CAGR 3Y',v:f1(s.REVENUE_CAGR_3YR_PCT)+'%',c:s.REVENUE_CAGR_3YR_PCT>10?'n-pos':''},
     {l:'PAT CAGR 3Y',v:f1(s.PAT_CAGR_3YR_PCT)+'%',c:s.PAT_CAGR_3YR_PCT>10?'n-pos':''},
     {l:'Promoter',v:f1(s.SH_PROMOTER_PCT_LATEST)+'%',c:''},
+    {l:'Piotroski',v:s.PIOTROSKI_SCORE!=null?s.PIOTROSKI_SCORE:'—',c:piotClass(s.PIOTROSKI_SCORE)},
     {l:'Score',v:f1(s.FINAL_SCORE),c:'n-pos'},
     {l:'Rank',v:s.FINAL_RANK?'#'+s.FINAL_RANK:'—',c:''},
   ];
@@ -1349,7 +1410,7 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
   // Theme toggle
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
-  // Reusable info tooltip wiring: anchorToBtn=true uses fixed positioning from btn rect
+  // Reusable info tooltip wiring
   function wireInfoBtn(btnId, tipId, anchorToBtn) {
     var btn = document.getElementById(btnId);
     var tip = document.getElementById(tipId);
@@ -1380,18 +1441,27 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     });
   }
 
-  // Both ⓘ buttons share one tooltip, always fixed-positioned from button coords
   wireInfoBtn('grade-info-btn',    'grade-tooltip', true);
   wireInfoBtn('grade-th-info-btn', 'grade-tooltip', true);
 
   // Universe switcher
   document.getElementById('btn-n500').addEventListener('click', function(){ switchUniverse('n500'); });
+  document.getElementById('btn-sc250').addEventListener('click', function(){ switchUniverse('sc250'); });
   document.getElementById('btn-mc250').addEventListener('click', function(){ switchUniverse('mc250'); });
 
-  // Search
+  // Search input
   document.getElementById('search-inp').addEventListener('input', function(){ handleSearch(this.value); });
 
-  // Clear
+  // Inline search clear X
+  document.getElementById('search-clear-btn').addEventListener('click', function(){
+    const inp=document.getElementById('search-inp');
+    inp.value=''; searchQ='';
+    updateSearchClearBtn();
+    inp.focus();
+    run();
+  });
+
+  // Clear All filters
   document.getElementById('clear-btn').addEventListener('click', clearAll);
 
   // Filter fab (mobile)
@@ -1402,8 +1472,7 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
   document.getElementById('sheet-close-btn').addEventListener('click', closeFilters);
   document.getElementById('sheet-apply-btn').addEventListener('click', closeFilters);
 
-  // ── Detail panel close ──────────────────────────────
-  // X button
+  // Detail panel close
   document.getElementById('dp-close-btn').addEventListener('click', closeDetail);
 
   // Escape key (PC)
@@ -1412,21 +1481,18 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
   });
 
   // PC: mousedown anywhere outside panel closes it
-  // (mousedown fires before click so it doesn't conflict with row opening)
   document.addEventListener('mousedown', function(e){
     if(!selectedSym) return;
     if(window.innerWidth <= 768) return;
     if(e.target.closest('#detail-panel')) return;
-    if(e.target.closest('tr[data-sym]')) return; // row click will handle switch
+    if(e.target.closest('tr[data-sym]')) return;
     closeDetail();
   });
 
-  // Mobile: touchstart outside panel closes it (overlay handles the dimmed area)
+  // Mobile: touchstart outside panel closes it
   document.getElementById('detail-overlay').addEventListener('touchstart', function(){
     if(selectedSym) closeDetail();
   }, {passive: true});
-
-  // (drag-to-dismiss removed — panel opens fully)
 
   // Table header sort
   document.querySelectorAll('th[data-col]').forEach(function(th){
