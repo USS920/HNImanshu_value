@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -341,29 +342,29 @@ th.sorted-desc::after { content: '▼'; margin-left: 3px; color: var(--accent); 
 th.sorted-asc, th.sorted-desc { color: var(--accent); }
 
 /* Column widths */
-.col-rank   { width: 48px; }
-.col-name   { width: 190px; }
-.col-ind    { width: 130px; }
-.col-grade  { width: 54px; }
-.col-fv     { width: 100px; }
-.col-cmp    { width: 76px; }
-.col-fval   { width: 84px; }
-.col-up     { width: 68px; }
-.col-mos    { width: 64px; }
-.col-pe     { width: 52px; }
-.col-roe    { width: 58px; }
-.col-roce   { width: 60px; }
-.col-div    { width: 54px; }
-.col-opm    { width: 54px; }
-.col-nm     { width: 54px; }
-.col-rcagr  { width: 68px; }
-.col-pcagr  { width: 68px; }
-.col-prom   { width: 60px; }
-.col-fscore { width: 52px; }
-.col-piot   { width: 62px; }
-.col-qual   { width: 58px; }
-.col-score  { width: 64px; }
-.col-rscore { width: 64px; }
+.col-rank   { width: 44px; }
+.col-name   { width: 180px; }
+.col-ind    { width: 120px; }
+.col-grade  { width: 50px; }
+.col-fv     { width: 96px; }
+.col-cmp    { width: 70px; }
+.col-fval   { width: 80px; }
+.col-up     { width: 82px; }
+.col-mos    { width: 60px; }
+.col-pe     { width: 46px; }
+.col-roe    { width: 52px; }
+.col-roce   { width: 54px; }
+.col-div    { width: 46px; }
+.col-opm    { width: 50px; }
+.col-nm     { width: 50px; }
+.col-rcagr  { width: 64px; }
+.col-pcagr  { width: 64px; }
+.col-prom   { width: 54px; }
+.col-fscore { width: 48px; }
+.col-piot   { width: 58px; }
+.col-qual   { width: 54px; }
+.col-score  { width: 60px; }
+.col-rscore { width: 60px; }
 
 td {
   padding: 7px 8px; border-bottom: 1px solid var(--border);
@@ -524,24 +525,24 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #main-table .col-ind    { min-width: 90px; max-width: 100px; }
   #main-table .col-grade  { min-width: 48px; }
   #main-table .col-fv     { min-width: 90px; }
-  #main-table .col-cmp    { min-width: 70px; }
-  #main-table .col-fval   { min-width: 76px; }
-  #main-table .col-up     { min-width: 60px; }
+  #main-table .col-cmp    { min-width: 68px; }
+  #main-table .col-fval   { min-width: 74px; }
+  #main-table .col-up     { min-width: 80px; }
   #main-table .col-mos    { min-width: 56px; }
-  #main-table .col-pe     { min-width: 48px; }
-  #main-table .col-roe    { min-width: 52px; }
-  #main-table .col-roce   { min-width: 54px; }
-  #main-table .col-div    { min-width: 48px; }
-  #main-table .col-opm    { min-width: 48px; }
-  #main-table .col-nm     { min-width: 48px; }
+  #main-table .col-pe     { min-width: 44px; }
+  #main-table .col-roe    { min-width: 50px; }
+  #main-table .col-roce   { min-width: 52px; }
+  #main-table .col-div    { min-width: 44px; }
+  #main-table .col-opm    { min-width: 46px; }
+  #main-table .col-nm     { min-width: 46px; }
   #main-table .col-rcagr  { min-width: 60px; }
   #main-table .col-pcagr  { min-width: 60px; }
-  #main-table .col-prom   { min-width: 54px; }
-  #main-table .col-fscore { min-width: 48px; }
-  #main-table .col-piot   { min-width: 56px; }
-  #main-table .col-qual   { min-width: 52px; }
-  #main-table .col-score  { min-width: 58px; }
-  #main-table .col-rscore { min-width: 58px; }
+  #main-table .col-prom   { min-width: 52px; }
+  #main-table .col-fscore { min-width: 46px; }
+  #main-table .col-piot   { min-width: 54px; }
+  #main-table .col-qual   { min-width: 50px; }
+  #main-table .col-score  { min-width: 56px; }
+  #main-table .col-rscore { min-width: 56px; }
   #detail-panel {
     display: block !important; position: fixed !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
@@ -671,7 +672,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </a>
   <div class="universe-switch">
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
-    <button class="uni-btn" id="btn-sc250">Smallcap 250</button>
+    <button class="uni-btn" id="btn-sc250">Smallcap 500</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
   </div>
   <div class="h-stats">
@@ -716,7 +717,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div id="toolbar">
       <button id="filter-fab">⚙</button>
       <div class="search-wrap">
-        <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
+        <input type="text" class="search-input" id="search-inp" placeholder="Company, symbol or industry…">
         <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search">✕</button>
       </div>
       
@@ -978,7 +979,7 @@ function run(){
   let d=rawData;
   if(activeGrades.size) d=d.filter(r=>activeGrades.has(r.GRADE));
   if(activeFVs.size) d=d.filter(r=>activeFVs.has(r.FV_GRADE));
-  if(searchQ){ const q=searchQ; d=d.filter(r=>(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)); }
+  if(searchQ){ const q=searchQ; d=d.filter(r=>(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)||(r.INDUSTRY||'').toLowerCase().includes(q)); }
   const GNUM={A:1,'B+':2,B:3,C:4,D:5,E:6};
   const isNum=!['COMPANY_NAME','SYMBOL','INDUSTRY','GRADE','FV_GRADE','SCREENER_URL'].includes(sortCol);
   const dir=sortDir==='asc'?1:-1;
