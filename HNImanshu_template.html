@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,8 +28,6 @@
   --radius: 10px;
   --transition: 0.2s ease;
 }
-
-/* NIGHT MODE (default) */
 body.night {
   --bg:     #0e0e0f;
   --bg2:    #141416;
@@ -55,8 +54,6 @@ body.night {
   --D:      #e09878;
   --E:      #c07888;
 }
-
-/* DAY MODE — warm dark beige */
 body.day {
   --bg:     #cfc9be;
   --bg2:    #c8c2b6;
@@ -83,10 +80,6 @@ body.day {
   --D:      #7a3010;
   --E:      #8a3858;
 }
-
-/* ═══════════════════════════════════════════════
-   RESET & BASE
-═══════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; -webkit-text-size-adjust: 100%; }
 body {
@@ -103,9 +96,7 @@ button { cursor: pointer; font-family: var(--sans); }
 a { text-decoration: none; }
 input { font-family: var(--sans); }
 
-/* ═══════════════════════════════════════════════
-   HEADER
-═══════════════════════════════════════════════ */
+/* HEADER */
 #header {
   display: flex;
   align-items: center;
@@ -118,8 +109,6 @@ input { font-family: var(--sans); }
   transition: background var(--transition), border-color var(--transition);
   gap: 12px;
 }
-
-/* HNI Logo */
 .hni-logo { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
 .hni-mark svg { width: 32px; height: 32px; }
 .hni-wordmark {
@@ -129,8 +118,6 @@ input { font-family: var(--sans); }
 .hni-wordmark .hni { color: var(--accent); letter-spacing: 2px; font-size: 13px; }
 .hni-wordmark .manshu { color: var(--text3); font-weight: 400; font-size: 11px; letter-spacing: 0.5px; }
 .hni-tagline { font-size: 7.5px; color: var(--text3); font-family: var(--mono); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
-
-/* Universe switcher */
 .universe-switch {
   display: flex; gap: 2px;
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
@@ -144,69 +131,39 @@ input { font-family: var(--sans); }
 }
 .uni-btn.active { background: var(--accent); color: var(--bg); font-weight: 700; }
 .uni-btn:not(.active):hover { color: var(--text); }
-
-/* Header stats */
 .h-stats { display: flex; gap: 16px; margin-left: auto; align-items: center; }
 .hstat { text-align: right; }
 .hstat-val { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--accent); line-height: 1; }
 .hstat-lbl { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 1px; }
-
-/* Theme toggle — desktop: right of header stats */
 #theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 14px;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px; margin-left: 14px; flex-shrink: 0;
 }
 .toggle-icon { font-size: 12px; line-height: 1; }
 .toggle-track {
-  width: 36px; height: 20px;
-  background: var(--border2);
-  border-radius: 10px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.25s;
-  border: none;
-  flex-shrink: 0;
+  width: 36px; height: 20px; background: var(--border2);
+  border-radius: 10px; position: relative; cursor: pointer;
+  transition: background 0.25s; border: none; flex-shrink: 0;
 }
 body.day .toggle-track { background: var(--accent); }
 .toggle-thumb {
-  width: 14px; height: 14px;
-  background: var(--bg3);
-  border-radius: 50%;
-  position: absolute;
-  top: 3px; left: 3px;
-  transition: transform 0.25s cubic-bezier(.4,0,.2,1);
-  pointer-events: none;
+  width: 14px; height: 14px; background: var(--bg3);
+  border-radius: 50%; position: absolute; top: 3px; left: 3px;
+  transition: transform 0.25s cubic-bezier(.4,0,.2,1); pointer-events: none;
 }
 body.day .toggle-thumb { transform: translateX(16px); }
 
-/* ═══════════════════════════════════════════════
-   LAYOUT — PC (sidebar + table)
-═══════════════════════════════════════════════ */
-#app {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
+/* LAYOUT */
+#app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
 /* SIDEBAR */
 #sidebar {
-  width: 210px;
-  flex-shrink: 0;
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: 210px; flex-shrink: 0; background: var(--bg2);
+  border-right: 1px solid var(--border); display: flex;
+  flex-direction: column; overflow-y: auto; overflow-x: hidden;
   transition: background var(--transition), border-color var(--transition);
 }
 #sidebar::-webkit-scrollbar { width: 3px; }
 #sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
 .sb-section { padding: 10px 12px; border-bottom: 1px solid var(--border); position: relative; }
 .sb-label {
   font-size: 8px; font-family: var(--mono); color: var(--text3);
@@ -214,8 +171,6 @@ body.day .toggle-thumb { transform: translateX(16px); }
   display: flex; align-items: center; gap: 6px;
 }
 .sb-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* Grade pills */
 .grade-pills { display: flex; flex-direction: column; gap: 3px; }
 .grade-pill {
   display: flex; align-items: center; justify-content: space-between;
@@ -237,8 +192,6 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .grade-pill[data-g="C"].active  { background: var(--C);  color: var(--bg); border-color: var(--C); }
 .grade-pill[data-g="D"].active  { background: var(--D);  color: var(--bg); border-color: var(--D); }
 .grade-pill[data-g="E"].active  { background: var(--E);  color: var(--bg); border-color: var(--E); }
-
-/* FV pills */
 .fv-pills { display: flex; flex-direction: column; gap: 2px; }
 .fv-pill {
   display: flex; align-items: center; justify-content: space-between;
@@ -250,8 +203,6 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .fv-pill.active { border-color: var(--blue); background: rgba(107,140,186,0.08); color: var(--blue); }
 .fv-pill .cnt { font-family: var(--mono); font-size: 9px; color: var(--text3); }
 .fv-pill.active .cnt { color: var(--blue); }
-
-/* Lookup */
 .lookup-wrap { position: relative; }
 .lookup-input {
   width: 100%; padding: 6px 10px; background: var(--bg);
@@ -282,205 +233,77 @@ body.day .toggle-thumb { transform: translateX(16px); }
 /* Info button + tooltip */
 .sb-label { position: relative; }
 .info-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #3a6ea8;
-  color: #fff;
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 9px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  line-height: 1;
-  margin-left: 4px;
-  vertical-align: middle;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  position: relative;
-  top: -1px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #3a6ea8; color: #fff;
+  font-family: Georgia, serif; font-style: italic;
+  font-size: 9px; font-weight: 700; border: none; cursor: pointer;
+  line-height: 1; margin-left: 4px; vertical-align: middle; flex-shrink: 0;
+  transition: background 0.15s; position: relative; top: -1px;
 }
 .info-btn:hover { background: #5a8ec8; }
-.th-info-btn {
-  position: relative;
-  top: 0;
-  margin-left: 3px;
-}
+.th-info-btn { position: relative; top: 0; margin-left: 3px; }
 .info-tooltip {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 6px);
-  width: 240px;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  box-shadow: var(--shadow);
-  z-index: 800;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(-4px);
+  position: absolute; left: 0; top: calc(100% + 6px); width: 240px;
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 10px 12px; box-shadow: var(--shadow); z-index: 800;
+  pointer-events: none; opacity: 0; transform: translateY(-4px);
   transition: opacity 0.25s ease, transform 0.25s ease;
-  overflow: hidden;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  overflow: hidden; max-height: 0; padding-top: 0; padding-bottom: 0;
 }
-.info-tooltip.visible {
-  max-height: 400px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-.info-tooltip.visible {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: all;
-}
+.info-tooltip.visible { max-height: 400px; padding-top: 10px; padding-bottom: 10px; }
+.info-tooltip.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
 .it-title {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
 }
 .it-section { margin-bottom: 7px; }
 .it-section:last-child { margin-bottom: 0; }
-.it-head {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 3px;
-}
-.it-row {
-  font-size: 10px;
-  color: var(--text2);
-  line-height: 1.6;
-  padding-left: 4px;
-}
-
+.it-head { font-family: var(--mono); font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+.it-row { font-size: 10px; color: var(--text2); line-height: 1.6; padding-left: 4px; }
 
 /* Sidebar clear button */
-.sb-clear-wrap {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-}
+.sb-clear-wrap { padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .sb-clear-btn {
-  width: 100%;
-  padding: 7px 10px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  color: var(--text3);
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  width: 100%; padding: 7px 10px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text3); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.3px; cursor: pointer; transition: all 0.15s;
+  text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
-.sb-clear-btn .x-icon {
-  color: #c0404a;
-  font-weight: 700;
-  font-size: 11px;
-  line-height: 1;
-}
-.sb-clear-btn:hover {
-  border-color: #c0404a;
-  color: var(--text2);
-  background: rgba(192,64,74,0.07);
-}
-.sb-clear-btn:hover .x-icon {
-  color: #e05060;
-}
+.sb-clear-btn .x-icon { color: #c0404a; font-weight: 700; font-size: 11px; line-height: 1; }
+.sb-clear-btn:hover { border-color: #c0404a; color: var(--text2); background: rgba(192,64,74,0.07); }
+.sb-clear-btn:hover .x-icon { color: #e05060; }
+#sb-last-updated { margin-top: auto; padding: 10px 12px 12px; border-top: 1px solid var(--border); }
+.sb-lu-label { font-family: var(--mono); font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 3px; }
+.sb-lu-val { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.3px; line-height: 1.55; white-space: pre-line; }
 
-/* Last updated — sidebar bottom */
-#sb-last-updated {
-  margin-top: auto;
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--border);
-}
-.sb-lu-label {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 3px;
-}
-.sb-lu-val {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  letter-spacing: 0.3px;
-  line-height: 1.55;
-  white-space: pre-line;
-}
-
-/* ═══════════════════════════════════════════════
-   MAIN CONTENT
-═══════════════════════════════════════════════ */
+/* MAIN */
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-
-/* Toolbar */
 #toolbar {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
   flex-shrink: 0; transition: background var(--transition), border-color var(--transition);
 }
-
-/* Search wrapper with inline clear X */
-.search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
+.search-wrap { position: relative; display: flex; align-items: center; flex-shrink: 0; }
 .search-input {
-  padding: 6px 28px 6px 12px; /* right padding for X button */
-  background: var(--bg);
+  padding: 6px 28px 6px 12px; background: var(--bg);
   border: 1px solid var(--border); border-radius: 6px;
   color: var(--text); font-size: 12px; outline: none; width: 200px;
   transition: border-color 0.12s, background var(--transition), color var(--transition);
 }
 .search-input:focus { border-color: var(--accent); }
 .search-input::placeholder { color: var(--text3); }
-
-/* Inline X to clear search */
 .search-clear-btn {
-  position: absolute;
-  right: 7px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--text3);
-  font-size: 13px;
-  line-height: 1;
-  padding: 2px;
-  cursor: pointer;
-  display: none; /* shown via JS when input has value */
-  transition: color 0.12s;
-  border-radius: 3px;
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3); font-size: 13px;
+  line-height: 1; padding: 2px; cursor: pointer; display: none;
+  transition: color 0.12s; border-radius: 3px;
 }
 .search-clear-btn:hover { color: var(--orange); }
 .search-clear-btn.visible { display: block; }
-
 .result-count { font-family: var(--mono); font-size: 10px; color: var(--text3); }
 .result-count span { color: var(--accent); }
-
-/* Clear All filters button — moved next to search */
 .clear-btn {
   padding: 5px 10px; border: 1px solid var(--border2); border-radius: 5px;
   background: transparent; color: var(--text2); font-size: 11px;
@@ -488,16 +311,11 @@ body.day .toggle-thumb { transform: translateX(16px); }
 }
 .clear-btn:hover { border-color: var(--orange); color: var(--orange); }
 
-/* ═══════════════════════════════════════════════
-   TABLE — PC
-═══════════════════════════════════════════════ */
-#table-wrap {
-  flex: 1; overflow: auto; position: relative;
-}
+/* TABLE */
+#table-wrap { flex: 1; overflow: auto; position: relative; }
 #table-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
 #table-wrap::-webkit-scrollbar-track { background: transparent; }
 #table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 thead { position: sticky; top: 0; z-index: 10; }
 th {
@@ -512,26 +330,30 @@ th.sorted-asc::after  { content: '▲'; margin-left: 3px; color: var(--accent); 
 th.sorted-desc::after { content: '▼'; margin-left: 3px; color: var(--accent); font-size: 7px; }
 th.sorted-asc, th.sorted-desc { color: var(--accent); }
 
-.col-rank  { width: 48px; }
-.col-name  { width: 190px; }
-.col-ind   { width: 130px; }
-.col-grade { width: 54px; }
-.col-fv    { width: 100px; }
-.col-cmp   { width: 76px; }
-.col-fval  { width: 84px; }
-.col-up    { width: 68px; }
-.col-mos   { width: 64px; }
-.col-pe    { width: 52px; }
-.col-roe   { width: 58px; }
-.col-roce  { width: 60px; }
-.col-div   { width: 54px; }
-.col-opm   { width: 54px; }
-.col-nm    { width: 54px; }
-.col-rcagr { width: 68px; }
-.col-pcagr { width: 68px; }
-.col-prom  { width: 60px; }
-.col-piot  { width: 56px; }
-.col-score { width: 56px; }
+/* Column widths */
+.col-rank   { width: 48px; }
+.col-name   { width: 190px; }
+.col-ind    { width: 130px; }
+.col-grade  { width: 54px; }
+.col-fv     { width: 100px; }
+.col-cmp    { width: 76px; }
+.col-fval   { width: 84px; }
+.col-up     { width: 68px; }
+.col-mos    { width: 64px; }
+.col-pe     { width: 52px; }
+.col-roe    { width: 58px; }
+.col-roce   { width: 60px; }
+.col-div    { width: 54px; }
+.col-opm    { width: 54px; }
+.col-nm     { width: 54px; }
+.col-rcagr  { width: 68px; }
+.col-pcagr  { width: 68px; }
+.col-prom   { width: 60px; }
+.col-fscore { width: 52px; }
+.col-piot   { width: 62px; }
+.col-qual   { width: 58px; }
+.col-score  { width: 64px; }
+.col-rscore { width: 64px; }
 
 td {
   padding: 7px 8px; border-bottom: 1px solid var(--border);
@@ -541,42 +363,28 @@ td {
 tr:hover td { background: var(--accent-glow); }
 tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
-/* Detail panel — PC */
+/* Detail panel */
 #detail-panel {
   background: var(--bg2); border-top: 1px solid var(--border);
-  flex-shrink: 0;
-  display: none;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(8px);
+  flex-shrink: 0; display: none; max-height: 0; overflow: hidden;
+  opacity: 0; transform: translateY(8px);
   transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1),
-              opacity 0.25s ease,
-              transform 0.25s ease,
-              background var(--transition),
-              border-color var(--transition);
+              opacity 0.25s ease, transform 0.25s ease,
+              background var(--transition), border-color var(--transition);
   pointer-events: none;
 }
 #detail-panel.open {
-  display: block;
-  max-height: 320px;
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: all;
-  padding: 12px 16px 14px;
+  display: block; max-height: 340px; opacity: 1;
+  transform: translateY(0); pointer-events: all; padding: 12px 16px 14px;
 }
 .dp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
 .dp-name { font-size: 14px; font-weight: 700; }
 .dp-sub { font-size: 10px; color: var(--text2); font-family: var(--mono); margin-top: 2px; }
 .dp-grade { font-family: var(--mono); font-size: 20px; font-weight: 700; padding: 2px 12px; border-radius: 6px; border: 2px solid; }
 .dp-close {
-  background: none; border: none;
-  color: var(--text3);
-  font-size: 22px; font-weight: 300;
-  padding: 2px 2px 2px 10px; line-height: 1;
-  transition: color 0.15s;
-  margin-left: auto;
-  flex-shrink: 0;
+  background: none; border: none; color: var(--text3);
+  font-size: 22px; font-weight: 300; padding: 2px 2px 2px 10px; line-height: 1;
+  transition: color 0.15s; margin-left: auto; flex-shrink: 0;
 }
 .dp-close:hover { color: var(--text); }
 .dp-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; }
@@ -587,14 +395,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px;
   background: rgba(107,140,186,0.08); border: 1px solid var(--blue);
   border-radius: 5px; color: var(--blue); font-size: 10px; font-family: var(--mono);
-  transition: background 0.12s;
+  transition: background 0.12s; margin-top: 10px;
 }
 .screener-btn:hover { background: rgba(107,140,186,0.15); }
-
-/* Empty state */
 .empty-state { padding: 60px 20px; text-align: center; color: var(--text3); font-size: 13px; }
-
-/* Badges */
 .grade-badge {
   display: inline-block; padding: 1px 8px; border-radius: 20px;
   font-family: var(--mono); font-size: 10px; font-weight: 700; border: 1px solid;
@@ -608,196 +412,105 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .fv-FA { background: rgba(184,150,46,0.08); color: var(--gold); border-color: rgba(184,150,46,0.25); }
 .fv-FP { background: rgba(120,120,120,0.08); color: var(--text3); border-color: rgba(120,120,120,0.15); }
 .fv-OV { background: rgba(196,122,90,0.08); color: var(--orange); border-color: rgba(196,122,90,0.25); }
-
 .n-pos { color: var(--A); font-family: var(--mono); }
 .n-neg { color: var(--orange); font-family: var(--mono); }
 .n-neu { font-family: var(--mono); color: var(--text2); }
 .n-hi  { font-family: var(--mono); color: var(--text); }
+.piot-hi  { font-family: var(--mono); color: var(--A); font-weight: 700; }
+.piot-mid { font-family: var(--mono); color: var(--C); }
+.piot-lo  { font-family: var(--mono); color: var(--D); }
+.combined-hi  { font-family: var(--mono); color: var(--A); font-weight: 700; }
+.combined-mid { font-family: var(--mono); color: var(--C); }
+.combined-lo  { font-family: var(--mono); color: var(--D); }
 
-/* Piotroski score colour coding */
-.piot-hi  { font-family: var(--mono); color: var(--A); font-weight: 700; }   /* 7–9 */
-.piot-mid { font-family: var(--mono); color: var(--C); }                      /* 4–6 */
-.piot-lo  { font-family: var(--mono); color: var(--D); }                      /* 0–3 */
-
-/* ═══════════════════════════════════════════════
-   MOBILE LAYOUT
-═══════════════════════════════════════════════ */
+/* MOBILE */
 @media (max-width: 768px) {
   body { overflow: hidden; }
-
-  /* Mobile header adjustments */
-  #header {
-    padding: 0 10px;
-    height: 50px;
-    gap: 8px;
-    flex-wrap: nowrap;
-  }
-
-  /* Hide desktop-only header elements */
+  #header { padding: 0 10px; height: 50px; gap: 8px; flex-wrap: nowrap; }
   .h-stats { display: none; }
   .hni-tagline { display: none; }
-
-  /* Universe switch compact */
   .universe-switch { margin-left: 4px; }
   .uni-btn { padding: 4px 7px; font-size: 9px; }
-
-  /* Theme toggle on mobile: right side, compact */
-  #theme-toggle {
-    margin-left: auto;
-    gap: 5px;
-  }
+  #theme-toggle { margin-left: auto; gap: 5px; }
   .toggle-icon { font-size: 11px; }
-
-  /* Sidebar hidden on mobile */
   #sidebar { display: none; }
-
   #main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-
-  /* Mobile toolbar */
   #toolbar { padding: 6px 10px; gap: 6px; }
   .search-wrap { flex: 1; }
   .search-input { flex: 1; width: 100%; min-width: 0; }
   .result-count { display: none; }
-
-  /* Filter button (mobile) */
   #filter-fab {
-    display: flex;
-    align-items: center; justify-content: center;
-    width: 34px; height: 34px;
-    background: var(--bg3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; background: var(--bg3); border: 1px solid var(--border2);
     border-radius: 7px; color: var(--text2); font-size: 15px;
     transition: all 0.12s; flex-shrink: 0;
   }
   #filter-fab:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* Mobile count bar */
   #mobile-count-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 12px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text3);
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0;
   }
   #mobile-count-bar span { color: var(--accent); }
-
-  /* Mobile: SHOW TABLE with scroll, hide card list */
-  #table-wrap {
-    display: block !important;
-    flex: 1;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  #table-wrap { display: block !important; flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
   #mobile-list { display: none !important; }
-
-  /* Mobile table: allow natural width so it scrolls horizontally */
-  #main-table {
-    table-layout: auto !important;
-    min-width: 1000px;
-  }
-
-  /* Mobile table column widths — compact but readable */
-  #main-table .col-rank  { min-width: 44px; }
-  #main-table .col-name  { min-width: 140px; }
-  #main-table .col-ind   { min-width: 90px; max-width: 100px; }
-  #main-table .col-grade { min-width: 48px; }
-  #main-table .col-fv    { min-width: 90px; }
-  #main-table .col-cmp   { min-width: 70px; }
-  #main-table .col-fval  { min-width: 76px; }
-  #main-table .col-up    { min-width: 60px; }
-  #main-table .col-mos   { min-width: 56px; }
-  #main-table .col-pe    { min-width: 48px; }
-  #main-table .col-roe   { min-width: 52px; }
-  #main-table .col-roce  { min-width: 54px; }
-  #main-table .col-div   { min-width: 48px; }
-  #main-table .col-opm   { min-width: 48px; }
-  #main-table .col-nm    { min-width: 48px; }
-  #main-table .col-rcagr { min-width: 60px; }
-  #main-table .col-pcagr { min-width: 60px; }
-  #main-table .col-prom  { min-width: 54px; }
-  #main-table .col-piot  { min-width: 50px; }
-  #main-table .col-score { min-width: 50px; }
-
-  /* Detail panel full-screen on mobile */
+  #main-table { table-layout: auto !important; min-width: 1100px; }
+  #main-table .col-rank   { min-width: 44px; }
+  #main-table .col-name   { min-width: 140px; }
+  #main-table .col-ind    { min-width: 90px; max-width: 100px; }
+  #main-table .col-grade  { min-width: 48px; }
+  #main-table .col-fv     { min-width: 90px; }
+  #main-table .col-cmp    { min-width: 70px; }
+  #main-table .col-fval   { min-width: 76px; }
+  #main-table .col-up     { min-width: 60px; }
+  #main-table .col-mos    { min-width: 56px; }
+  #main-table .col-pe     { min-width: 48px; }
+  #main-table .col-roe    { min-width: 52px; }
+  #main-table .col-roce   { min-width: 54px; }
+  #main-table .col-div    { min-width: 48px; }
+  #main-table .col-opm    { min-width: 48px; }
+  #main-table .col-nm     { min-width: 48px; }
+  #main-table .col-rcagr  { min-width: 60px; }
+  #main-table .col-pcagr  { min-width: 60px; }
+  #main-table .col-prom   { min-width: 54px; }
+  #main-table .col-fscore { min-width: 48px; }
+  #main-table .col-piot   { min-width: 56px; }
+  #main-table .col-qual   { min-width: 52px; }
+  #main-table .col-score  { min-width: 58px; }
+  #main-table .col-rscore { min-width: 58px; }
   #detail-panel {
-    display: block !important;
-    position: fixed !important;
+    display: block !important; position: fixed !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
-    background: var(--bg2) !important;
-    border-top: 2px solid var(--border2) !important;
-    border-radius: 20px 20px 0 0 !important;
-    z-index: 500 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    padding: 0 !important;
-    max-height: 88vh !important;
-    opacity: 1 !important;
+    background: var(--bg2) !important; border-top: 2px solid var(--border2) !important;
+    border-radius: 20px 20px 0 0 !important; z-index: 500 !important;
+    overflow-y: auto !important; -webkit-overflow-scrolling: touch;
+    padding: 0 !important; max-height: 88vh !important; opacity: 1 !important;
     transform: translateY(110%) !important;
     transition: transform 0.3s cubic-bezier(0.4,0,0.2,1) !important;
     will-change: transform;
-    flex-wrap: unset !important;
-    flex-direction: unset !important;
-    gap: unset !important;
-    align-items: unset !important;
   }
-  #detail-panel.open {
-    transform: translateY(0) !important;
-    pointer-events: all !important;
-  }
+  #detail-panel.open { transform: translateY(0) !important; pointer-events: all !important; }
   .dp-drag-handle {
-    width: 40px; height: 5px;
-    background: var(--border2);
-    border-radius: 3px;
-    margin: 12px auto 8px;
-    flex-shrink: 0;
-    cursor: grab;
-  }
-  .dp-drag-handle::before {
-    content: '';
-    display: block;
-    position: absolute;
-    left: 50%; top: 0;
-    transform: translateX(-50%);
-    width: 120px; height: 28px;
-    margin-top: -12px;
+    width: 40px; height: 5px; background: var(--border2);
+    border-radius: 3px; margin: 12px auto 8px; flex-shrink: 0; cursor: grab;
   }
   #detail-panel .dp-inner { padding: 10px 14px 28px; }
   #detail-panel .dp-metrics { grid-template-columns: repeat(3, 1fr) !important; }
   #detail-panel .dp-header { margin-bottom: 10px; }
   #detail-panel .dp-metrics .dm { min-width: 100px; }
   .dp-close { font-size: 26px; font-weight: 200; padding: 2px 4px 2px 12px; }
-
-  /* Detail panel backdrop */
   #detail-overlay {
-    display: block !important;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 498;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+    display: block !important; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 498; opacity: 0;
+    pointer-events: none; transition: opacity 0.3s ease;
     -webkit-tap-highlight-color: transparent;
   }
-  #detail-overlay.visible {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  /* Bottom sheet for filters */
+  #detail-overlay.visible { opacity: 1; pointer-events: all; }
   #filter-sheet {
-    position: fixed; inset: 0; top: auto;
-    background: var(--bg2); border-top: 2px solid var(--border2);
-    border-radius: 20px 20px 0 0;
-    z-index: 600; overflow-y: auto;
-    padding: 0 0 32px;
-    max-height: 75vh;
-    box-shadow: var(--shadow);
-    transform: translateY(100%);
+    position: fixed; inset: 0; top: auto; background: var(--bg2);
+    border-top: 2px solid var(--border2); border-radius: 20px 20px 0 0;
+    z-index: 600; overflow-y: auto; padding: 0 0 32px; max-height: 75vh;
+    box-shadow: var(--shadow); transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), background var(--transition);
     display: block;
   }
@@ -807,11 +520,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     z-index: 590; opacity: 0; pointer-events: none; transition: opacity 0.25s;
   }
   #filter-overlay.visible { opacity: 1; pointer-events: all; }
-
-  .sheet-drag-handle {
-    width: 36px; height: 4px; background: var(--border2);
-    border-radius: 2px; margin: 10px auto 6px;
-  }
+  .sheet-drag-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 10px auto 6px; }
   .sheet-title {
     font-size: 13px; font-weight: 700; padding: 4px 16px 10px;
     border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
@@ -819,7 +528,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .sheet-close { background: none; border: none; color: var(--text2); font-size: 18px; padding: 2px 4px; }
   .sheet-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
   .sheet-label { font-size: 9px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; }
-
   .sheet-grades { display: flex; gap: 6px; flex-wrap: wrap; }
   .sheet-grade-btn {
     padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border);
@@ -833,14 +541,13 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .sheet-grade-btn[data-g="B"]  { color: var(--B); }
   .sheet-grade-btn[data-g="C"]  { color: var(--C); }
   .sheet-grade-btn[data-g="D"]  { color: var(--D); }
-  .sheet-grade-btn[data-g="A"].active  { background: var(--A); color: var(--bg); border-color: var(--A); }
-  .sheet-grade-btn[data-g="B+"].active { background: var(--Bp); color: var(--bg); border-color: var(--Bp); }
-  .sheet-grade-btn[data-g="B"].active  { background: var(--B); color: var(--bg); border-color: var(--B); }
-  .sheet-grade-btn[data-g="C"].active  { background: var(--C); color: var(--bg); border-color: var(--C); }
-  .sheet-grade-btn[data-g="D"].active  { background: var(--D); color: var(--bg); border-color: var(--D); }
   .sheet-grade-btn[data-g="E"]  { color: var(--E); }
-  .sheet-grade-btn[data-g="E"].active  { background: var(--E); color: var(--bg); border-color: var(--E); }
-
+  .sheet-grade-btn[data-g="A"].active  { background: var(--A);  color: var(--bg); border-color: var(--A); }
+  .sheet-grade-btn[data-g="B+"].active { background: var(--Bp); color: var(--bg); border-color: var(--Bp); }
+  .sheet-grade-btn[data-g="B"].active  { background: var(--B);  color: var(--bg); border-color: var(--B); }
+  .sheet-grade-btn[data-g="C"].active  { background: var(--C);  color: var(--bg); border-color: var(--C); }
+  .sheet-grade-btn[data-g="D"].active  { background: var(--D);  color: var(--bg); border-color: var(--D); }
+  .sheet-grade-btn[data-g="E"].active  { background: var(--E);  color: var(--bg); border-color: var(--E); }
   .sheet-fv-list { display: flex; flex-direction: column; gap: 4px; }
   .sheet-fv-btn {
     display: flex; align-items: center; justify-content: space-between;
@@ -852,7 +559,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .sheet-fv-btn.active { border-color: var(--blue); background: rgba(107,140,186,0.08); color: var(--blue); }
   .sheet-fv-btn .cnt { font-family: var(--mono); font-size: 10px; color: var(--text3); }
   .sheet-fv-btn.active .cnt { color: var(--blue); }
-
   .sheet-sort-list { display: flex; flex-direction: column; gap: 3px; }
   .sheet-sort-btn {
     padding: 8px 12px; border-radius: 8px; border: 1px solid transparent;
@@ -861,16 +567,14 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   }
   .sheet-sort-btn:hover { color: var(--text); }
   .sheet-sort-btn.active { color: var(--accent); border-color: var(--border); background: var(--accent-glow); }
-
   .sheet-apply {
-    margin: 12px 16px 0;
-    padding: 12px; width: calc(100% - 32px);
+    margin: 12px 16px 0; padding: 12px; width: calc(100% - 32px);
     background: var(--accent); color: var(--bg);
     font-weight: 700; font-size: 14px; border: none; border-radius: 10px;
   }
 }
 
-/* hide mobile elements on desktop */
+/* Hide mobile elements on desktop */
 #mobile-list { display: none; }
 #mobile-count-bar { display: none; }
 #filter-fab { display: none; }
@@ -878,7 +582,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 #filter-overlay { display: none; }
 #detail-overlay { display: none !important; }
 
-/* tablet adjustments */
+/* Tablet */
 @media (min-width: 769px) and (max-width: 1100px) {
   #sidebar { width: 180px; }
   .col-ind { display: none; }
@@ -888,7 +592,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 </head>
 <body class="night">
 
-<!-- HEADER -->
 <div id="header">
   <a class="hni-logo" href="#">
     <div class="hni-mark">
@@ -902,33 +605,24 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
       <div class="hni-tagline">Value Screener</div>
     </div>
   </a>
-
   <div class="universe-switch">
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
     <button class="uni-btn" id="btn-sc250">Smallcap 250</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
   </div>
-
   <div class="h-stats">
     <div class="hstat"><div class="hstat-val" id="hs-total">—</div><div class="hstat-lbl">Universe</div></div>
     <div class="hstat"><div class="hstat-val" id="hs-dv">—</div><div class="hstat-lbl">Deep Value</div></div>
     <div class="hstat"><div class="hstat-val" id="hs-best">—</div><div class="hstat-lbl">A/B+</div></div>
   </div>
-
-  <!-- Theme toggle — inline in header, right side -->
   <div id="theme-toggle">
     <span class="toggle-icon">🌙</span>
-    <button class="toggle-track" aria-label="Toggle theme">
-      <div class="toggle-thumb"></div>
-    </button>
+    <button class="toggle-track" aria-label="Toggle theme"><div class="toggle-thumb"></div></button>
     <span class="toggle-icon">☀️</span>
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="app">
-
-  <!-- SIDEBAR (PC only) -->
   <div id="sidebar">
     <div class="sb-section">
       <div class="sb-label">Grade <button class="info-btn" id="grade-info-btn" aria-label="Grade info">i</button></div>
@@ -954,64 +648,58 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     </div>
   </div>
 
-  <!-- MAIN PANEL -->
   <div id="main">
-    <!-- Toolbar -->
     <div id="toolbar">
       <button id="filter-fab">⚙</button>
-      <!-- Search with inline clear -->
       <div class="search-wrap">
         <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
         <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search">✕</button>
       </div>
-      <!-- Clear All filters — right next to search -->
       <button class="clear-btn" id="clear-btn">✕ Clear All</button>
       <div class="result-count">Showing <span id="rc-span">—</span></div>
     </div>
 
-    <!-- Mobile count bar -->
     <div id="mobile-count-bar">
       <span><span id="mc-span">—</span> stocks</span>
       <span id="mc-sort-label" style="color:var(--text3)">Sorted by rank</span>
     </div>
 
-    <!-- Table (PC and Mobile) -->
     <div id="table-wrap">
       <table id="main-table">
         <thead>
           <tr>
-            <th class="col-rank"  data-col="FINAL_RANK"             data-dir="asc"  ># Rank</th>
-            <th class="col-name"  data-col="COMPANY_NAME"           data-dir="asc"  >Company</th>
-            <th class="col-ind"   data-col="INDUSTRY"               data-dir="asc"  >Industry</th>
-            <th class="col-grade" data-col="GRADE"                  data-dir="asc"  >Grade <button class="info-btn th-info-btn" id="grade-th-info-btn" aria-label="Grade info">i</button></th>
-            <th class="col-fv"    data-col="FV_GRADE"               data-dir="asc"  >FV Status</th>
-            <th class="col-cmp"   data-col="CMP"                    data-dir="asc"  >CMP ₹</th>
-            <th class="col-fval"  data-col="COMPOSITE_FAIR_VALUE"   data-dir="desc" >Fair Val</th>
-            <th class="col-up"    data-col="UPSIDE_PCT"             data-dir="desc" >Upside%</th>
-            <th class="col-mos"   data-col="MARGIN_OF_SAFETY_PCT"   data-dir="desc" >MOS%</th>
-            <th class="col-pe"    data-col="PE"                     data-dir="asc"  >P/E</th>
-            <th class="col-roe"   data-col="ROE_PCT"                data-dir="desc" >ROE%</th>
-            <th class="col-roce"  data-col="ROCE_PCT"               data-dir="desc" >ROCE%</th>
-            <th class="col-div"   data-col="DIV_YIELD_PCT"          data-dir="desc" >Div%</th>
-            <th class="col-opm"   data-col="PL_OPM_PCT"             data-dir="desc" >OPM%</th>
-            <th class="col-nm"    data-col="NET_MARGIN_CALC_PCT"    data-dir="desc" >NM%</th>
-            <th class="col-rcagr" data-col="REVENUE_CAGR_3YR_PCT"  data-dir="desc" >RevCAGR</th>
-            <th class="col-pcagr" data-col="PAT_CAGR_3YR_PCT"      data-dir="desc" >PATCAGR</th>
-            <th class="col-prom"  data-col="SH_PROMOTER_PCT_LATEST" data-dir="desc" >Promo%</th>
-            <th class="col-piot"  data-col="PIOTROSKI_SCORE"        data-dir="desc" >Piotroski</th>
-            <th class="col-score" data-col="FINAL_SCORE"            data-dir="desc" >Score</th>
+            <th class="col-rank"   data-col="FINAL_RANK"             data-dir="asc"  ># Rank</th>
+            <th class="col-name"   data-col="COMPANY_NAME"           data-dir="asc"  >Company</th>
+            <th class="col-ind"    data-col="INDUSTRY"               data-dir="asc"  >Industry</th>
+            <th class="col-grade"  data-col="GRADE"                  data-dir="asc"  >Grade <button class="info-btn th-info-btn" id="grade-th-info-btn" aria-label="Grade info">i</button></th>
+            <th class="col-fv"     data-col="FV_GRADE"               data-dir="asc"  >FV Status</th>
+            <th class="col-cmp"    data-col="CMP"                    data-dir="asc"  >CMP ₹</th>
+            <th class="col-fval"   data-col="COMPOSITE_FAIR_VALUE"   data-dir="desc" >Fair Val</th>
+            <th class="col-up"     data-col="UPSIDE_PCT"             data-dir="desc" >Upside%</th>
+            <th class="col-mos"    data-col="MARGIN_OF_SAFETY_PCT"   data-dir="desc" >MOS%</th>
+            <th class="col-pe"     data-col="PE"                     data-dir="asc"  >P/E</th>
+            <th class="col-roe"    data-col="ROE_PCT"                data-dir="desc" >ROE%</th>
+            <th class="col-roce"   data-col="ROCE_PCT"               data-dir="desc" >ROCE%</th>
+            <th class="col-div"    data-col="DIV_YIELD_PCT"          data-dir="desc" >Div%</th>
+            <th class="col-opm"    data-col="PL_OPM_PCT"             data-dir="desc" >OPM%</th>
+            <th class="col-nm"     data-col="NET_MARGIN_CALC_PCT"    data-dir="desc" >NM%</th>
+            <th class="col-rcagr"  data-col="REVENUE_CAGR_3YR_PCT"  data-dir="desc" >RevCAGR</th>
+            <th class="col-pcagr"  data-col="PAT_CAGR_3YR_PCT"      data-dir="desc" >PATCAGR</th>
+            <th class="col-prom"   data-col="SH_PROMOTER_PCT_LATEST" data-dir="desc" >Promo%</th>
+            <th class="col-fscore" data-col="F_SCORE"                data-dir="desc" >F-Score</th>
+            <th class="col-piot"   data-col="PIOTROSKI_SCORE"        data-dir="desc" >Piotroski</th>
+            <th class="col-qual"   data-col="QUALITY_SCORE"          data-dir="desc" >Quality</th>
+            <th class="col-score"  data-col="COMBINED_SCORE"         data-dir="desc" >Combined</th>
+            <th class="col-rscore" data-col="FINAL_SCORE"            data-dir="desc" >Rank Score</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
-
       <div id="empty-state" class="empty-state" style="display:none">No stocks match current filters.</div>
     </div>
 
-    <!-- Mobile card list (not used, kept for fallback) -->
     <div id="mobile-list"></div>
 
-    <!-- Detail panel -->
     <div id="detail-overlay"></div>
     <div id="detail-panel">
       <div class="dp-inner">
@@ -1032,10 +720,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
-<!-- MOBILE FILTER OVERLAY -->
 <div id="filter-overlay"></div>
-
-<!-- MOBILE FILTER SHEET -->
 <div id="filter-sheet">
   <div class="sheet-drag-handle"></div>
   <div class="sheet-title">
@@ -1058,14 +743,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// DATA — injected by build.py (must be first)
-// ═══════════════════════════════════════════════
 %%DATASETS_PLACEHOLDER%%
 
-// ═══════════════════════════════════════════════
-// BOOT — wire everything after DOM is ready
-// ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
 const GC = {A:'#5a9e6f','B+':'#4a8f5e',B:'#6aaa7a',C:'#b8962e',D:'#c47a5a',E:'#a06878'};
 const FV_MAP = {
@@ -1076,35 +755,28 @@ const FV_MAP = {
   'OVERVALUED':   {cls:'fv-OV', label:'Overvalued'}
 };
 const SORT_OPTIONS = [
-  {col:'FINAL_RANK',dir:'asc',  label:'Best Rank'},
-  {col:'UPSIDE_PCT',dir:'desc', label:'Highest Upside'},
-  {col:'MARGIN_OF_SAFETY_PCT',dir:'desc',label:'Margin of Safety'},
-  {col:'ROE_PCT',dir:'desc',    label:'ROE %'},
-  {col:'ROCE_PCT',dir:'desc',   label:'ROCE %'},
-  {col:'PE',dir:'asc',          label:'Lowest P/E'},
-  {col:'DIV_YIELD_PCT',dir:'desc',label:'Dividend Yield'},
-  {col:'PIOTROSKI_SCORE',dir:'desc',label:'Piotroski Score'},
-  {col:'FINAL_SCORE',dir:'desc',label:'Score'},
+  {col:'FINAL_RANK',          dir:'asc',  label:'Best Rank'},
+  {col:'COMBINED_SCORE',      dir:'desc', label:'Combined Score'},
+  {col:'FINAL_SCORE',         dir:'desc', label:'Rank Score'},
+  {col:'PIOTROSKI_SCORE',     dir:'desc', label:'Piotroski Score'},
+  {col:'QUALITY_SCORE',       dir:'desc', label:'Quality Score'},
+  {col:'UPSIDE_PCT',          dir:'desc', label:'Highest Upside'},
+  {col:'MARGIN_OF_SAFETY_PCT',dir:'desc', label:'Margin of Safety'},
+  {col:'ROE_PCT',             dir:'desc', label:'ROE %'},
+  {col:'ROCE_PCT',            dir:'desc', label:'ROCE %'},
+  {col:'PE',                  dir:'asc',  label:'Lowest P/E'},
+  {col:'DIV_YIELD_PCT',       dir:'desc', label:'Dividend Yield'},
 ];
 
-// ═══════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════
 let universe='n500', rawData=DATASETS.n500, viewData=[];
 let activeGrades=new Set(), activeFVs=new Set();
 let searchQ='', sortCol='FINAL_RANK', sortDir='asc', selectedSym=null;
 
-// ═══════════════════════════════════════════════
-// THEME
-// ═══════════════════════════════════════════════
 function toggleTheme(){
   document.body.classList.toggle('night');
   document.body.classList.toggle('day');
 }
 
-// ═══════════════════════════════════════════════
-// UNIVERSE
-// ═══════════════════════════════════════════════
 function switchUniverse(u){
   universe=u; rawData=DATASETS[u];
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
@@ -1122,9 +794,6 @@ function switchUniverse(u){
   buildSidebar(); buildMobileSheet(); run();
 }
 
-// ═══════════════════════════════════════════════
-// SEARCH CLEAR BUTTON (inline X)
-// ═══════════════════════════════════════════════
 function updateSearchClearBtn(){
   const btn=document.getElementById('search-clear-btn');
   const inp=document.getElementById('search-inp');
@@ -1132,9 +801,6 @@ function updateSearchClearBtn(){
   btn.classList.toggle('visible', inp.value.length > 0);
 }
 
-// ═══════════════════════════════════════════════
-// SIDEBAR (PC)
-// ═══════════════════════════════════════════════
 function buildSidebar(){
   const gc={},fvc={};
   rawData.forEach(function(d){gc[d.GRADE]=(gc[d.GRADE]||0)+1;fvc[d.FV_GRADE]=(fvc[d.FV_GRADE]||0)+1;});
@@ -1165,9 +831,6 @@ function buildSidebar(){
   if(sc){ sc.onclick=null; sc.addEventListener('click',function(){ clearAll(); }); }
 }
 
-// ═══════════════════════════════════════════════
-// MOBILE FILTER SHEET
-// ═══════════════════════════════════════════════
 function buildMobileSheet(){
   const gc={},fvc={};
   rawData.forEach(d=>{gc[d.GRADE]=(gc[d.GRADE]||0)+1;fvc[d.FV_GRADE]=(fvc[d.FV_GRADE]||0)+1;});
@@ -1210,9 +873,6 @@ function buildMobileSheet(){
 function openFilters(){ buildMobileSheet(); document.getElementById('filter-sheet').classList.add('open'); document.getElementById('filter-overlay').classList.add('visible'); }
 function closeFilters(){ document.getElementById('filter-sheet').classList.remove('open'); document.getElementById('filter-overlay').classList.remove('visible'); }
 
-// ═══════════════════════════════════════════════
-// FILTER & SORT
-// ═══════════════════════════════════════════════
 function toggleGrade(g){
   activeGrades.has(g)?activeGrades.delete(g):activeGrades.add(g);
   document.querySelectorAll('.grade-pill').forEach(b=>b.classList.toggle('active',activeGrades.has(b.dataset.g)));
@@ -1230,7 +890,6 @@ function clearAll(){
   updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
-  // Reset sort to rank
   sortCol='FINAL_RANK'; sortDir='asc';
   clearSortHeaders();
   const rankTh=document.querySelector('th[data-col="FINAL_RANK"]');
@@ -1249,9 +908,6 @@ function sortBy(th){
 }
 function clearSortHeaders(){ document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted-asc','sorted-desc')); }
 
-// ═══════════════════════════════════════════════
-// RUN (filter + sort + render)
-// ═══════════════════════════════════════════════
 function run(){
   let d=rawData;
   if(activeGrades.size) d=d.filter(r=>activeGrades.has(r.GRADE));
@@ -1276,9 +932,6 @@ function run(){
   renderTable(d);
 }
 
-// ═══════════════════════════════════════════════
-// PIOTROSKI HELPER
-// ═══════════════════════════════════════════════
 function piotClass(v){
   if(v==null||v==='') return 'n-neu';
   const n=+v;
@@ -1286,10 +939,14 @@ function piotClass(v){
   if(n>=4) return 'piot-mid';
   return 'piot-lo';
 }
+function combinedClass(v){
+  if(v==null||v==='') return 'n-neu';
+  const n=+v;
+  if(n>=15) return 'combined-hi';
+  if(n>=8)  return 'combined-mid';
+  return 'combined-lo';
+}
 
-// ═══════════════════════════════════════════════
-// RENDER TABLE
-// ═══════════════════════════════════════════════
 function renderTable(data){
   const tbody=document.getElementById('tbody');
   const empty=document.getElementById('empty-state');
@@ -1303,7 +960,9 @@ function renderTable(data){
     const fv=FV_MAP[s.FV_GRADE]||{cls:'fv-FP',label:s.FV_GRADE||'—'};
     const sel=s.SYMBOL===selectedSym?' row-selected':'';
     const piotVal = s.PIOTROSKI_SCORE!=null ? s.PIOTROSKI_SCORE : '—';
-    const piotCls = s.PIOTROSKI_SCORE!=null ? piotClass(s.PIOTROSKI_SCORE) : 'n-neu';
+    const piotCls = piotClass(s.PIOTROSKI_SCORE);
+    const combVal = s.COMBINED_SCORE!=null ? s.COMBINED_SCORE : '—';
+    const combCls = combinedClass(s.COMBINED_SCORE);
     rows[i]=`<tr class="${sel}" data-sym="${s.SYMBOL}">
       <td class="n-neu">${s.FINAL_RANK!=null?'#'+s.FINAL_RANK:'—'}</td>
       <td title="${esc(s.COMPANY_NAME)}"><b style="font-size:11.5px">${esc(s.COMPANY_NAME||'—')}</b><br><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${s.SYMBOL}</span></td>
@@ -1323,16 +982,16 @@ function renderTable(data){
       <td class="${(s.REVENUE_CAGR_3YR_PCT||0)>10?'n-pos':'n-neu'}">${f1(s.REVENUE_CAGR_3YR_PCT)}%</td>
       <td class="${(s.PAT_CAGR_3YR_PCT||0)>10?'n-pos':'n-neu'}">${f1(s.PAT_CAGR_3YR_PCT)}%</td>
       <td class="n-neu">${f1(s.SH_PROMOTER_PCT_LATEST)}%</td>
+      <td class="n-neu" style="font-family:var(--mono)">${s.F_SCORE!=null?s.F_SCORE:'—'}</td>
       <td class="${piotCls}">${piotVal}</td>
+      <td class="n-neu" style="font-family:var(--mono)">${f1(s.QUALITY_SCORE)}</td>
+      <td class="${combCls}">${combVal}</td>
       <td style="font-family:var(--mono);color:var(--accent);font-weight:700">${f1(s.FINAL_SCORE)}</td>
     </tr>`;
   }
   tbody.innerHTML=rows.join('');
 }
 
-// ═══════════════════════════════════════════════
-// DETAIL PANEL
-// ═══════════════════════════════════════════════
 function rowClick(sym){
   if(selectedSym===sym){ closeDetail(); return; }
   selectedSym=sym; showDetail(sym);
@@ -1345,22 +1004,25 @@ function showDetail(sym){
   document.getElementById('dp-sub').textContent=`${s.SYMBOL} · ${s.INDUSTRY||'—'} · ${fmtMC(s.MARKET_CAP_CR)}`;
   const dg=document.getElementById('dp-grade'); dg.textContent=s.GRADE; dg.style.color=gc; dg.style.borderColor=gc;
   const ms=[
-    {l:'CMP',v:s.CMP?'₹'+s.CMP.toLocaleString('en-IN'):'—',c:''},
-    {l:'Fair Value',v:s.COMPOSITE_FAIR_VALUE?'₹'+Math.round(s.COMPOSITE_FAIR_VALUE).toLocaleString('en-IN'):'—',c:''},
-    {l:'Upside',v:s.UPSIDE_PCT!=null?(s.UPSIDE_PCT>0?'+':'')+f1(s.UPSIDE_PCT)+'%':'—',c:s.UPSIDE_PCT>0?'n-pos':'n-neg'},
-    {l:'MOS',v:s.MARGIN_OF_SAFETY_PCT!=null?f1(s.MARGIN_OF_SAFETY_PCT)+'%':'—',c:s.MARGIN_OF_SAFETY_PCT>0?'n-pos':'n-neg'},
-    {l:'P/E',v:f1(s.PE),c:''},
-    {l:'Book Value',v:s.BOOK_VALUE?'₹'+s.BOOK_VALUE:'—',c:''},
-    {l:'ROE',v:f1(s.ROE_PCT)+'%',c:s.ROE_PCT>15?'n-pos':''},
-    {l:'ROCE',v:f1(s.ROCE_PCT)+'%',c:s.ROCE_PCT>15?'n-pos':''},
-    {l:'OPM',v:f1(s.PL_OPM_PCT)+'%',c:''},
-    {l:'Net Margin',v:f1(s.NET_MARGIN_CALC_PCT)+'%',c:''},
-    {l:'Rev CAGR 3Y',v:f1(s.REVENUE_CAGR_3YR_PCT)+'%',c:s.REVENUE_CAGR_3YR_PCT>10?'n-pos':''},
-    {l:'PAT CAGR 3Y',v:f1(s.PAT_CAGR_3YR_PCT)+'%',c:s.PAT_CAGR_3YR_PCT>10?'n-pos':''},
-    {l:'Promoter',v:f1(s.SH_PROMOTER_PCT_LATEST)+'%',c:''},
-    {l:'Piotroski',v:s.PIOTROSKI_SCORE!=null?s.PIOTROSKI_SCORE:'—',c:piotClass(s.PIOTROSKI_SCORE)},
-    {l:'Score',v:f1(s.FINAL_SCORE),c:'n-pos'},
-    {l:'Rank',v:s.FINAL_RANK?'#'+s.FINAL_RANK:'—',c:''},
+    {l:'CMP',           v:s.CMP?'₹'+s.CMP.toLocaleString('en-IN'):'—',                                    c:''},
+    {l:'Fair Value',    v:s.COMPOSITE_FAIR_VALUE?'₹'+Math.round(s.COMPOSITE_FAIR_VALUE).toLocaleString('en-IN'):'—', c:''},
+    {l:'Upside',        v:s.UPSIDE_PCT!=null?(s.UPSIDE_PCT>0?'+':'')+f1(s.UPSIDE_PCT)+'%':'—',            c:s.UPSIDE_PCT>0?'n-pos':'n-neg'},
+    {l:'MOS',           v:s.MARGIN_OF_SAFETY_PCT!=null?f1(s.MARGIN_OF_SAFETY_PCT)+'%':'—',                c:s.MARGIN_OF_SAFETY_PCT>0?'n-pos':'n-neg'},
+    {l:'P/E',           v:f1(s.PE),                                                                         c:''},
+    {l:'Book Value',    v:s.BOOK_VALUE?'₹'+s.BOOK_VALUE:'—',                                              c:''},
+    {l:'ROE',           v:f1(s.ROE_PCT)+'%',                                                               c:s.ROE_PCT>15?'n-pos':''},
+    {l:'ROCE',          v:f1(s.ROCE_PCT)+'%',                                                              c:s.ROCE_PCT>15?'n-pos':''},
+    {l:'OPM',           v:f1(s.PL_OPM_PCT)+'%',                                                           c:''},
+    {l:'Net Margin',    v:f1(s.NET_MARGIN_CALC_PCT)+'%',                                                   c:''},
+    {l:'Rev CAGR 3Y',   v:f1(s.REVENUE_CAGR_3YR_PCT)+'%',                                                 c:s.REVENUE_CAGR_3YR_PCT>10?'n-pos':''},
+    {l:'PAT CAGR 3Y',   v:f1(s.PAT_CAGR_3YR_PCT)+'%',                                                    c:s.PAT_CAGR_3YR_PCT>10?'n-pos':''},
+    {l:'Promoter',      v:f1(s.SH_PROMOTER_PCT_LATEST)+'%',                                               c:''},
+    {l:'F-Score (ref)', v:s.F_SCORE!=null?s.F_SCORE:'—',                                                  c:'n-neu'},
+    {l:'Piotroski',     v:s.PIOTROSKI_SCORE!=null?s.PIOTROSKI_SCORE:'—',                                  c:piotClass(s.PIOTROSKI_SCORE)},
+    {l:'Quality Score', v:f1(s.QUALITY_SCORE),                                                             c:'n-neu'},
+    {l:'Combined',      v:s.COMBINED_SCORE!=null?s.COMBINED_SCORE:'—',                                    c:combinedClass(s.COMBINED_SCORE)},
+    {l:'Rank Score',    v:f1(s.FINAL_SCORE),                                                               c:'n-pos'},
+    {l:'Rank',          v:s.FINAL_RANK?'#'+s.FINAL_RANK:'—',                                              c:''},
   ];
   document.getElementById('dp-metrics').innerHTML=ms.map(m=>`<div class="dm"><div class="dm-l">${m.l}</div><div class="dm-v ${m.c}">${m.v}</div></div>`).join('');
   document.getElementById('dp-link').href=s.SCREENER_URL||'#';
@@ -1374,9 +1036,6 @@ function closeDetail(){
   if(viewData.length) renderTable(viewData);
 }
 
-// ═══════════════════════════════════════════════
-// LOOKUP
-// ═══════════════════════════════════════════════
 function handleLookup(inp){
   const q=inp.value.toLowerCase().trim(), dd=document.getElementById('lookup-dd');
   if(!q){dd.classList.remove('open');return;}
@@ -1395,22 +1054,13 @@ function pickLookup(sym){
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
   selectedSym=sym; showDetail(sym); renderTable(viewData);
 }
-document.addEventListener('click',e=>{ if(!e.target.closest('.lookup-wrap')){ const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open'); } });
 
-// ═══════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════
 function f1(v){return v!=null?Number(v).toFixed(1):'—';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';if(v>=1000)return(v/1000).toFixed(1)+'K Cr';return v.toFixed(0)+' Cr';}
 
-// ═══════════════════════════════════════════════
-// EVENT WIRING & INIT
-// ═══════════════════════════════════════════════
-  // Theme toggle
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
-  // Reusable info tooltip wiring
   function wireInfoBtn(btnId, tipId, anchorToBtn) {
     var btn = document.getElementById(btnId);
     var tip = document.getElementById(tipId);
@@ -1444,43 +1094,21 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
   wireInfoBtn('grade-info-btn',    'grade-tooltip', true);
   wireInfoBtn('grade-th-info-btn', 'grade-tooltip', true);
 
-  // Universe switcher
   document.getElementById('btn-n500').addEventListener('click', function(){ switchUniverse('n500'); });
   document.getElementById('btn-sc250').addEventListener('click', function(){ switchUniverse('sc250'); });
   document.getElementById('btn-mc250').addEventListener('click', function(){ switchUniverse('mc250'); });
-
-  // Search input
   document.getElementById('search-inp').addEventListener('input', function(){ handleSearch(this.value); });
-
-  // Inline search clear X
   document.getElementById('search-clear-btn').addEventListener('click', function(){
     const inp=document.getElementById('search-inp');
-    inp.value=''; searchQ='';
-    updateSearchClearBtn();
-    inp.focus();
-    run();
+    inp.value=''; searchQ=''; updateSearchClearBtn(); inp.focus(); run();
   });
-
-  // Clear All filters
   document.getElementById('clear-btn').addEventListener('click', clearAll);
-
-  // Filter fab (mobile)
   document.getElementById('filter-fab').addEventListener('click', openFilters);
-
-  // Filter overlay + sheet close
   document.getElementById('filter-overlay').addEventListener('click', closeFilters);
   document.getElementById('sheet-close-btn').addEventListener('click', closeFilters);
   document.getElementById('sheet-apply-btn').addEventListener('click', closeFilters);
-
-  // Detail panel close
   document.getElementById('dp-close-btn').addEventListener('click', closeDetail);
-
-  // Escape key (PC)
-  document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape' && selectedSym) closeDetail();
-  });
-
-  // PC: mousedown anywhere outside panel closes it
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && selectedSym) closeDetail(); });
   document.addEventListener('mousedown', function(e){
     if(!selectedSym) return;
     if(window.innerWidth <= 768) return;
@@ -1488,48 +1116,33 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     if(e.target.closest('tr[data-sym]')) return;
     closeDetail();
   });
-
-  // Mobile: touchstart outside panel closes it
   document.getElementById('detail-overlay').addEventListener('touchstart', function(){
     if(selectedSym) closeDetail();
   }, {passive: true});
-
-  // Table header sort
   document.querySelectorAll('th[data-col]').forEach(function(th){
     th.addEventListener('click', function(){ sortBy(th); });
   });
-
-  // Row click via event delegation on tbody
   document.getElementById('tbody').addEventListener('click', function(e){
     var tr = e.target.closest('tr[data-sym]');
     if(tr) rowClick(tr.dataset.sym);
   });
-
-  // Lookup dropdown click via event delegation
   document.getElementById('lookup-dd').addEventListener('click', function(e){
     var item = e.target.closest('.lookup-item[data-sym]');
     if(item) pickLookup(item.dataset.sym);
   });
-
-  // Lookup input
   document.getElementById('lookup-inp').addEventListener('input', function(){ handleLookup(this); });
-
-  // Click outside lookup dropdown
   document.addEventListener('click', function(e){
     if(!e.target.closest('.lookup-wrap')){
       var dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
     }
   });
 
-  // Init sort indicator
   var th=document.querySelector('th[data-col="FINAL_RANK"]'); if(th) th.classList.add('sorted-asc');
-
-  // Build UI & render
   buildSidebar(); buildMobileSheet(); run();
 
 }); // end DOMContentLoaded
 </script>
-<!-- Shared grade info tooltip (fixed position, shown via JS) -->
+
 <div class="info-tooltip grade-shared-tooltip" id="grade-tooltip">
   <div class="it-title">How stocks are scored</div>
   <div class="it-section">
@@ -1542,8 +1155,12 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     <div class="it-row"><span style="color:var(--E);font-weight:700;font-family:var(--mono)">E</span>&nbsp; Poor — missing data or very weak factors</div>
   </div>
   <div class="it-section">
-    <div class="it-head">Scored on</div>
-    <div class="it-row">Valuation · Growth · Quality · Safety · Piotroski</div>
+    <div class="it-head">Score columns</div>
+    <div class="it-row"><b>F-Score</b> — CSV pre-computed Piotroski (0–9, reference)</div>
+    <div class="it-row"><b>Piotroski</b> — Fresh YoY 9-signal F-Score (0–9)</div>
+    <div class="it-row"><b>Quality</b> — Absolute levels + direction bonuses (0–13.4)</div>
+    <div class="it-row"><b>Combined</b> — Piotroski + Quality, primary rank (0–22.4)</div>
+    <div class="it-row"><b>Rank Score</b> — Master composite: valuation + quality + penalties (from CSV)</div>
   </div>
   <div class="it-section">
     <div class="it-head">Penalized for</div>
