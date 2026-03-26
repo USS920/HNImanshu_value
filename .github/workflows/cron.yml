@@ -41,16 +41,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Running n500.py..."
-          python n500.py || echo "n500 failed"
 
-          echo "Running nm250.py..."
-          python nm250.py || echo "nm250 failed"
-
-          echo "Running ns500.py..."
-          python ns500.py || echo "nm250 failed"
-
-          echo "Running build.py..."
-          python build.py || echo "build failed"
           
 
       # ✅ FIXED COMMIT STEP
