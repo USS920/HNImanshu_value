@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -302,6 +303,15 @@ body.day .toggle-thumb { transform: translateX(16px); }
 }
 .search-clear-btn:hover { color: var(--orange); }
 .search-clear-btn.visible { display: block; }
+.lookup-clear-btn {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3); font-size: 13px;
+  line-height: 1; padding: 2px; cursor: pointer; display: none;
+  transition: color 0.12s; border-radius: 3px;
+}
+.lookup-clear-btn:hover { color: var(--orange); }
+.lookup-clear-btn.visible { display: block; }
+
 .result-count { font-family: var(--mono); font-size: 10px; color: var(--text3); }
 .result-count span { color: var(--accent); }
 .clear-btn {
@@ -426,13 +436,67 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 /* MOBILE */
 @media (max-width: 768px) {
   body { overflow: hidden; }
-  #header { padding: 0 10px; height: 50px; gap: 8px; flex-wrap: nowrap; }
-  .h-stats { display: none; }
-  .hni-tagline { display: none; }
-  .universe-switch { margin-left: 4px; }
-  .uni-btn { padding: 4px 7px; font-size: 9px; }
-  #theme-toggle { margin-left: auto; gap: 5px; }
-  .toggle-icon { font-size: 11px; }
+  /* Two-row header using CSS grid */
+  #header {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto auto !important;
+    grid-template-areas:
+      "logo toggle"
+      "tabs tabs" !important;
+    padding: 8px 12px 0 !important;
+    height: auto !important;
+    gap: 0 !important;
+    align-items: center !important;
+  }
+  .hni-logo    { grid-area: logo; gap: 8px; align-items: center; }
+  #theme-toggle { grid-area: toggle; margin-left: 0; gap: 6px; justify-self: end; }
+  .universe-switch { grid-area: tabs; }
+  .h-stats { display: none !important; }
+
+  /* Logo sizing */
+  .hni-mark svg { width: 30px; height: 30px; }
+  .hni-wordmark .hni { font-size: 13px; }
+  .hni-wordmark .manshu { font-size: 10px; }
+  .hni-tagline { display: block !important; font-size: 7px; letter-spacing: 1.2px; margin-top: 1px; }
+
+  /* Toggle sizing */
+  .toggle-icon { font-size: 13px; }
+  .toggle-track { width: 38px; height: 22px; }
+  .toggle-thumb { width: 16px; height: 16px; }
+  body.day .toggle-thumb { transform: translateX(16px); }
+
+  /* Universe tabs — match desktop rounded pill style */
+  .universe-switch {
+    margin: 8px 0 0 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    gap: 2px !important;
+    background: var(--bg) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+  }
+  .uni-btn {
+    flex: 1 !important;
+    padding: 6px 4px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+    border-radius: 5px !important;
+    border: none !important;
+    color: var(--text2) !important;
+    background: transparent !important;
+    font-family: var(--mono) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px !important;
+    transition: none !important;
+    white-space: nowrap !important;
+  }
+  .uni-btn.active {
+    background: var(--accent) !important;
+    color: var(--bg) !important;
+    font-weight: 700 !important;
+  }
   #sidebar { display: none; }
   #main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
   #toolbar { padding: 6px 10px; gap: 6px; }
@@ -607,7 +671,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </a>
   <div class="universe-switch">
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
-    <button class="uni-btn" id="btn-sc250">Smallcap 500</button>
+    <button class="uni-btn" id="btn-sc250">Smallcap 250</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
   </div>
   <div class="h-stats">
@@ -638,7 +702,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="sb-section">
       <div class="sb-label">Lookup</div>
       <div class="lookup-wrap">
-        <input type="text" class="lookup-input" id="lookup-inp" placeholder="Name or symbol…" autocomplete="off">
+        <input type="text" class="lookup-input" id="lookup-inp" placeholder="Name or symbol…" autocomplete="off" style="padding-right:28px"><button class="lookup-clear-btn" id="lookup-clear-btn" aria-label="Clear lookup">✕</button>
         <div class="lookup-dd" id="lookup-dd"></div>
       </div>
     </div>
@@ -655,7 +719,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
         <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
         <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search">✕</button>
       </div>
-      <button class="clear-btn" id="clear-btn">✕ Clear All</button>
+      
       <div class="result-count">Showing <span id="rc-span">—</span></div>
     </div>
 
@@ -784,6 +848,7 @@ function switchUniverse(u){
   updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
+  const lcb2=document.getElementById('lookup-clear-btn'); if(lcb2) lcb2.classList.remove('visible');
   closeDetail();
   sortCol='FINAL_RANK'; sortDir='asc'; clearSortHeaders();
   const th=document.querySelector('th[data-col="FINAL_RANK"]');
@@ -890,6 +955,7 @@ function clearAll(){
   updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
+  const lcb=document.getElementById('lookup-clear-btn'); if(lcb) lcb.classList.remove('visible');
   sortCol='FINAL_RANK'; sortDir='asc';
   clearSortHeaders();
   const rankTh=document.querySelector('th[data-col="FINAL_RANK"]');
@@ -1038,6 +1104,7 @@ function closeDetail(){
 
 function handleLookup(inp){
   const q=inp.value.toLowerCase().trim(), dd=document.getElementById('lookup-dd');
+  const lcb=document.getElementById('lookup-clear-btn'); if(lcb) lcb.classList.toggle('visible', inp.value.length>0);
   if(!q){dd.classList.remove('open');return;}
   const m=rawData.filter(d=>(d.COMPANY_NAME||'').toLowerCase().includes(q)||(d.SYMBOL||'').toLowerCase().includes(q)).slice(0,10);
   if(!m.length){dd.classList.remove('open');return;}
@@ -1052,6 +1119,7 @@ function handleLookup(inp){
 function pickLookup(sym){
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
   const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
+  const lcb=document.getElementById('lookup-clear-btn'); if(lcb) lcb.classList.remove('visible');
   selectedSym=sym; showDetail(sym); renderTable(viewData);
 }
 
@@ -1102,7 +1170,14 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     const inp=document.getElementById('search-inp');
     inp.value=''; searchQ=''; updateSearchClearBtn(); inp.focus(); run();
   });
-  document.getElementById('clear-btn').addEventListener('click', clearAll);
+  document.getElementById('lookup-clear-btn').addEventListener('click', function(){
+    const inp=document.getElementById('lookup-inp');
+    inp.value='';
+    const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
+    document.getElementById('lookup-clear-btn').classList.remove('visible');
+    inp.focus();
+  });
+
   document.getElementById('filter-fab').addEventListener('click', openFilters);
   document.getElementById('filter-overlay').addEventListener('click', closeFilters);
   document.getElementById('sheet-close-btn').addEventListener('click', closeFilters);
