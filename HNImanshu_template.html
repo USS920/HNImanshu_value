@@ -1,6 +1,4 @@
 
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -653,6 +651,47 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .col-ind { display: none; }
   .col-opm, .col-nm, .col-rcagr, .col-pcagr { display: none; }
 }
+
+/* ── SMART FILTERS ── */
+
+/* ── SMART FILTERS SELECT ALL ── */
+.sf-select-all {
+  width: 100%; padding: 5px 9px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text3); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.3px; cursor: pointer; transition: all 0.15s;
+  text-align: center; margin-bottom: 7px;
+}
+.sf-select-all:hover { border-color: #4caf50; color: #4caf50; background: rgba(76,175,80,0.07); }
+.sf-select-all.all-selected { border-color: #4caf50; color: #4caf50; background: rgba(76,175,80,0.10); }
+
+.smart-filters { display: flex; flex-direction: column; gap: 1px; }
+.sf-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 2px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.sf-row:last-child { border-bottom: none; }
+.sf-label {
+  font-size: 11.5px; color: var(--text2);
+  transition: color 0.15s; user-select: none;
+  flex: 1; padding-right: 10px; line-height: 1.3;
+}
+.sf-row:hover .sf-label { color: var(--text); }
+.sf-check { appearance: none; -webkit-appearance: none; width: 0; height: 0; position: absolute; }
+.sf-row::after {
+  content: '';
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 1.5px solid var(--border2); border-radius: 4px;
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sf-row:has(.sf-check:checked)::after {
+  background: #4caf50; border-color: #4caf50;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+.sf-row:has(.sf-check:checked) .sf-label { color: var(--text); }
 </style>
 </head>
 <body class="night">
@@ -699,6 +738,28 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     </div>
     <div class="sb-clear-wrap">
       <button id="sb-clear-btn" class="sb-clear-btn"><span class="x-icon">✕</span> Clear All</button>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Smart Filters</div>
+      <button class="sf-select-all" id="sf-select-all-btn">&#10003; Select All</button>
+      <div class="smart-filters">
+        <label class="sf-row">
+          <span class="sf-label">Piotroski Score &#8805; 8</span>
+          <input type="checkbox" class="sf-check" id="sf-piotroski" data-filter="piotroski_gte8">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">Net Margin &gt; 15%</span>
+          <input type="checkbox" class="sf-check" id="sf-netmargin" data-filter="net_margin_gt15">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">ROE &gt; 20%</span>
+          <input type="checkbox" class="sf-check" id="sf-roe" data-filter="roe_gt20">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">Revenue Growth &gt; 10%</span>
+          <input type="checkbox" class="sf-check" id="sf-revgrowth" data-filter="rev_growth_gt10">
+        </label>
+      </div>
     </div>
     <div class="sb-section">
       <div class="sb-label">Lookup</div>
@@ -845,6 +906,8 @@ function toggleTheme(){
 function switchUniverse(u){
   universe=u; rawData=DATASETS[u];
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
+  document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
+  updateSelectAllBtn();
   document.getElementById('search-inp').value='';
   updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
@@ -979,6 +1042,10 @@ function run(){
   let d=rawData;
   if(activeGrades.size) d=d.filter(r=>activeGrades.has(r.GRADE));
   if(activeFVs.size) d=d.filter(r=>activeFVs.has(r.FV_GRADE));
+  if(document.getElementById('sf-piotroski')?.checked) d=d.filter(r=>r.PIOTROSKI_SCORE!=null && +r.PIOTROSKI_SCORE>=8);
+  if(document.getElementById('sf-netmargin')?.checked)  d=d.filter(r=>r.NET_MARGIN_CALC_PCT!=null && +r.NET_MARGIN_CALC_PCT>15);
+  if(document.getElementById('sf-roe')?.checked)        d=d.filter(r=>r.ROE_PCT!=null && +r.ROE_PCT>20);
+  if(document.getElementById('sf-revgrowth')?.checked)  d=d.filter(r=>r.REVENUE_CAGR_3YR_PCT!=null && +r.REVENUE_CAGR_3YR_PCT>10);
   if(searchQ){ const q=searchQ; d=d.filter(r=>(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)||(r.INDUSTRY||'').toLowerCase().includes(q)); }
   const GNUM={A:1,'B+':2,B:3,C:4,D:5,E:6};
   const isNum=!['COMPANY_NAME','SYMBOL','INDUSTRY','GRADE','FV_GRADE','SCREENER_URL'].includes(sortCol);
@@ -1213,6 +1280,24 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     }
   });
 
+  document.getElementById('sf-select-all-btn').addEventListener('click', function(){
+    var cbs = document.querySelectorAll('.sf-check');
+    var allChecked = Array.from(cbs).every(function(cb){ return cb.checked; });
+    cbs.forEach(function(cb){ cb.checked = !allChecked; });
+    updateSelectAllBtn();
+    run();
+  });
+  function updateSelectAllBtn(){
+    var btn = document.getElementById('sf-select-all-btn');
+    if(!btn) return;
+    var cbs = document.querySelectorAll('.sf-check');
+    var allChecked = Array.from(cbs).every(function(cb){ return cb.checked; });
+    btn.classList.toggle('all-selected', allChecked);
+    btn.innerHTML = allChecked ? '&#10005; Deselect All' : '&#10003; Select All';
+  }
+  document.querySelectorAll('.sf-check').forEach(function(cb){
+    cb.addEventListener('change', function(){ updateSelectAllBtn(); run(); });
+  });
   var th=document.querySelector('th[data-col="FINAL_RANK"]'); if(th) th.classList.add('sorted-asc');
   buildSidebar(); buildMobileSheet(); run();
 
@@ -1245,3 +1330,4 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
 </div>
 </body>
 </html>
+
