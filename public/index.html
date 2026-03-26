@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -341,29 +340,29 @@ th.sorted-desc::after { content: '▼'; margin-left: 3px; color: var(--accent); 
 th.sorted-asc, th.sorted-desc { color: var(--accent); }
 
 /* Column widths */
-.col-rank   { width: 48px; }
-.col-name   { width: 190px; }
-.col-ind    { width: 130px; }
-.col-grade  { width: 54px; }
-.col-fv     { width: 100px; }
-.col-cmp    { width: 76px; }
-.col-fval   { width: 84px; }
-.col-up     { width: 68px; }
-.col-mos    { width: 64px; }
-.col-pe     { width: 52px; }
-.col-roe    { width: 58px; }
-.col-roce   { width: 60px; }
-.col-div    { width: 54px; }
-.col-opm    { width: 54px; }
-.col-nm     { width: 54px; }
-.col-rcagr  { width: 68px; }
-.col-pcagr  { width: 68px; }
-.col-prom   { width: 60px; }
-.col-fscore { width: 52px; }
-.col-piot   { width: 62px; }
-.col-qual   { width: 58px; }
-.col-score  { width: 64px; }
-.col-rscore { width: 64px; }
+.col-rank   { width: 44px; }
+.col-name   { width: 180px; }
+.col-ind    { width: 120px; }
+.col-grade  { width: 50px; }
+.col-fv     { width: 96px; }
+.col-cmp    { width: 70px; }
+.col-fval   { width: 80px; }
+.col-up     { width: 82px; }
+.col-mos    { width: 60px; }
+.col-pe     { width: 46px; }
+.col-roe    { width: 52px; }
+.col-roce   { width: 54px; }
+.col-div    { width: 46px; }
+.col-opm    { width: 50px; }
+.col-nm     { width: 50px; }
+.col-rcagr  { width: 64px; }
+.col-pcagr  { width: 64px; }
+.col-prom   { width: 54px; }
+.col-fscore { width: 48px; }
+.col-piot   { width: 58px; }
+.col-qual   { width: 54px; }
+.col-score  { width: 60px; }
+.col-rscore { width: 60px; }
 
 td {
   padding: 7px 8px; border-bottom: 1px solid var(--border);
@@ -524,24 +523,24 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #main-table .col-ind    { min-width: 90px; max-width: 100px; }
   #main-table .col-grade  { min-width: 48px; }
   #main-table .col-fv     { min-width: 90px; }
-  #main-table .col-cmp    { min-width: 70px; }
-  #main-table .col-fval   { min-width: 76px; }
-  #main-table .col-up     { min-width: 60px; }
+  #main-table .col-cmp    { min-width: 68px; }
+  #main-table .col-fval   { min-width: 74px; }
+  #main-table .col-up     { min-width: 80px; }
   #main-table .col-mos    { min-width: 56px; }
-  #main-table .col-pe     { min-width: 48px; }
-  #main-table .col-roe    { min-width: 52px; }
-  #main-table .col-roce   { min-width: 54px; }
-  #main-table .col-div    { min-width: 48px; }
-  #main-table .col-opm    { min-width: 48px; }
-  #main-table .col-nm     { min-width: 48px; }
+  #main-table .col-pe     { min-width: 44px; }
+  #main-table .col-roe    { min-width: 50px; }
+  #main-table .col-roce   { min-width: 52px; }
+  #main-table .col-div    { min-width: 44px; }
+  #main-table .col-opm    { min-width: 46px; }
+  #main-table .col-nm     { min-width: 46px; }
   #main-table .col-rcagr  { min-width: 60px; }
   #main-table .col-pcagr  { min-width: 60px; }
-  #main-table .col-prom   { min-width: 54px; }
-  #main-table .col-fscore { min-width: 48px; }
-  #main-table .col-piot   { min-width: 56px; }
-  #main-table .col-qual   { min-width: 52px; }
-  #main-table .col-score  { min-width: 58px; }
-  #main-table .col-rscore { min-width: 58px; }
+  #main-table .col-prom   { min-width: 52px; }
+  #main-table .col-fscore { min-width: 46px; }
+  #main-table .col-piot   { min-width: 54px; }
+  #main-table .col-qual   { min-width: 50px; }
+  #main-table .col-score  { min-width: 56px; }
+  #main-table .col-rscore { min-width: 56px; }
   #detail-panel {
     display: block !important; position: fixed !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
@@ -652,6 +651,47 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .col-ind { display: none; }
   .col-opm, .col-nm, .col-rcagr, .col-pcagr { display: none; }
 }
+
+/* ── SMART FILTERS ── */
+
+/* ── SMART FILTERS SELECT ALL ── */
+.sf-select-all {
+  width: 100%; padding: 5px 9px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text3); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.3px; cursor: pointer; transition: all 0.15s;
+  text-align: center; margin-bottom: 7px;
+}
+.sf-select-all:hover { border-color: #4caf50; color: #4caf50; background: rgba(76,175,80,0.07); }
+.sf-select-all.all-selected { border-color: #4caf50; color: #4caf50; background: rgba(76,175,80,0.10); }
+
+.smart-filters { display: flex; flex-direction: column; gap: 1px; }
+.sf-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 2px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.sf-row:last-child { border-bottom: none; }
+.sf-label {
+  font-size: 11.5px; color: var(--text2);
+  transition: color 0.15s; user-select: none;
+  flex: 1; padding-right: 10px; line-height: 1.3;
+}
+.sf-row:hover .sf-label { color: var(--text); }
+.sf-check { appearance: none; -webkit-appearance: none; width: 0; height: 0; position: absolute; }
+.sf-row::after {
+  content: '';
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 1.5px solid var(--border2); border-radius: 4px;
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sf-row:has(.sf-check:checked)::after {
+  background: #4caf50; border-color: #4caf50;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+.sf-row:has(.sf-check:checked) .sf-label { color: var(--text); }
 </style>
 </head>
 <body class="night">
@@ -671,7 +711,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </a>
   <div class="universe-switch">
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
-    <button class="uni-btn" id="btn-sc250">Smallcap 250</button>
+    <button class="uni-btn" id="btn-sc250">Smallcap 500</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
   </div>
   <div class="h-stats">
@@ -700,6 +740,28 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
       <button id="sb-clear-btn" class="sb-clear-btn"><span class="x-icon">✕</span> Clear All</button>
     </div>
     <div class="sb-section">
+      <div class="sb-label">Smart Filters</div>
+      <button class="sf-select-all" id="sf-select-all-btn">&#10003; Select All</button>
+      <div class="smart-filters">
+        <label class="sf-row">
+          <span class="sf-label">Piotroski Score &#8805; 8</span>
+          <input type="checkbox" class="sf-check" id="sf-piotroski" data-filter="piotroski_gte8">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">Net Margin &gt; 15%</span>
+          <input type="checkbox" class="sf-check" id="sf-netmargin" data-filter="net_margin_gt15">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">ROE &gt; 20%</span>
+          <input type="checkbox" class="sf-check" id="sf-roe" data-filter="roe_gt20">
+        </label>
+        <label class="sf-row">
+          <span class="sf-label">Revenue Growth &gt; 10%</span>
+          <input type="checkbox" class="sf-check" id="sf-revgrowth" data-filter="rev_growth_gt10">
+        </label>
+      </div>
+    </div>
+    <div class="sb-section">
       <div class="sb-label">Lookup</div>
       <div class="lookup-wrap">
         <input type="text" class="lookup-input" id="lookup-inp" placeholder="Name or symbol…" autocomplete="off" style="padding-right:28px"><button class="lookup-clear-btn" id="lookup-clear-btn" aria-label="Clear lookup">✕</button>
@@ -709,7 +771,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div id="sb-last-updated">
       <div class="sb-lu-label">Last updated</div>
       <div class="sb-lu-val">27 Mar 2026
-12:55 AM IST</div>
+02:51 AM IST</div>
     </div>
   </div>
 
@@ -717,7 +779,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div id="toolbar">
       <button id="filter-fab">⚙</button>
       <div class="search-wrap">
-        <input type="text" class="search-input" id="search-inp" placeholder="Search company or symbol…">
+        <input type="text" class="search-input" id="search-inp" placeholder="Company, symbol or industry…">
         <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search">✕</button>
       </div>
       
@@ -849,6 +911,8 @@ function toggleTheme(){
 function switchUniverse(u){
   universe=u; rawData=DATASETS[u];
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
+  document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
+  updateSelectAllBtn();
   document.getElementById('search-inp').value='';
   updateSearchClearBtn();
   const li=document.getElementById('lookup-inp'); if(li) li.value='';
@@ -983,7 +1047,11 @@ function run(){
   let d=rawData;
   if(activeGrades.size) d=d.filter(r=>activeGrades.has(r.GRADE));
   if(activeFVs.size) d=d.filter(r=>activeFVs.has(r.FV_GRADE));
-  if(searchQ){ const q=searchQ; d=d.filter(r=>(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)); }
+  if(document.getElementById('sf-piotroski')?.checked) d=d.filter(r=>r.PIOTROSKI_SCORE!=null && +r.PIOTROSKI_SCORE>=8);
+  if(document.getElementById('sf-netmargin')?.checked)  d=d.filter(r=>r.NET_MARGIN_CALC_PCT!=null && +r.NET_MARGIN_CALC_PCT>15);
+  if(document.getElementById('sf-roe')?.checked)        d=d.filter(r=>r.ROE_PCT!=null && +r.ROE_PCT>20);
+  if(document.getElementById('sf-revgrowth')?.checked)  d=d.filter(r=>r.REVENUE_CAGR_3YR_PCT!=null && +r.REVENUE_CAGR_3YR_PCT>10);
+  if(searchQ){ const q=searchQ; d=d.filter(r=>(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)||(r.INDUSTRY||'').toLowerCase().includes(q)); }
   const GNUM={A:1,'B+':2,B:3,C:4,D:5,E:6};
   const isNum=!['COMPANY_NAME','SYMBOL','INDUSTRY','GRADE','FV_GRADE','SCREENER_URL'].includes(sortCol);
   const dir=sortDir==='asc'?1:-1;
@@ -1217,6 +1285,24 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
     }
   });
 
+  document.getElementById('sf-select-all-btn').addEventListener('click', function(){
+    var cbs = document.querySelectorAll('.sf-check');
+    var allChecked = Array.from(cbs).every(function(cb){ return cb.checked; });
+    cbs.forEach(function(cb){ cb.checked = !allChecked; });
+    updateSelectAllBtn();
+    run();
+  });
+  function updateSelectAllBtn(){
+    var btn = document.getElementById('sf-select-all-btn');
+    if(!btn) return;
+    var cbs = document.querySelectorAll('.sf-check');
+    var allChecked = Array.from(cbs).every(function(cb){ return cb.checked; });
+    btn.classList.toggle('all-selected', allChecked);
+    btn.innerHTML = allChecked ? '&#10005; Deselect All' : '&#10003; Select All';
+  }
+  document.querySelectorAll('.sf-check').forEach(function(cb){
+    cb.addEventListener('change', function(){ updateSelectAllBtn(); run(); });
+  });
   var th=document.querySelector('th[data-col="FINAL_RANK"]'); if(th) th.classList.add('sorted-asc');
   buildSidebar(); buildMobileSheet(); run();
 
@@ -1249,3 +1335,4 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
 </div>
 </body>
 </html>
+
