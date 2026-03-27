@@ -903,24 +903,18 @@ function toggleTheme(){
   document.body.classList.toggle('day');
 }
 
-function switchUniverse(u){
-  universe=u; rawData=DATASETS[u];
-  activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
-  document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
-  updateSelectAllBtn();
-  document.getElementById('search-inp').value='';
-  updateSearchClearBtn();
-  const li=document.getElementById('lookup-inp'); if(li) li.value='';
-  const dd=document.getElementById('lookup-dd'); if(dd) dd.classList.remove('open');
-  const lcb2=document.getElementById('lookup-clear-btn'); if(lcb2) lcb2.classList.remove('visible');
-  closeDetail();
-  sortCol='FINAL_RANK'; sortDir='asc'; clearSortHeaders();
-  const th=document.querySelector('th[data-col="FINAL_RANK"]');
-  if(th) th.classList.add('sorted-asc');
-  document.getElementById('btn-n500').classList.toggle('active',u==='n500');
-  document.getElementById('btn-sc250').classList.toggle('active',u==='sc250');
-  document.getElementById('btn-mc250').classList.toggle('active',u==='mc250');
-  buildSidebar(); buildMobileSheet(); run();
+function switchUniverse(u) {
+  universe = u;
+  rawData = DATASETS[u];
+  // ── DO NOT reset activeGrades, activeFVs, smart filters, or search ──
+  selectedSym = null;
+  closeDetail;
+  document.getElementById('btn-n500').classList.toggle('active', u === 'n500');
+  document.getElementById('btn-sc250').classList.toggle('active', u === 'sc250');
+  document.getElementById('btn-mc250').classList.toggle('active', u === 'mc250');
+  buildSidebar();
+  buildMobileSheet();
+  run();
 }
 
 function updateSearchClearBtn(){
