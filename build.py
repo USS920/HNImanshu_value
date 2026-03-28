@@ -14,6 +14,8 @@ Score Architecture:
   FINAL_RANK                 Rank by FINAL_SCORE descending.
 
 F_SCORE from CSV is retained as a reference column only.
+
+Obfuscate the final HTML.
 """
 
 import pandas as pd
@@ -22,6 +24,8 @@ import json
 import sys
 import re
 import argparse
+import base64
+import zlib
 from pathlib import Path
 from datetime import datetime
 import zoneinfo
@@ -58,10 +62,10 @@ KEY_COLS = [
     "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT",
     "SH_PROMOTER_PCT_LATEST", "NET_DEBT_CR", "INTEREST_COVERAGE",
     "CF_OPERATING_CR", "NET_DEBT_TO_EBITDA",
-    "F_SCORE",           # 0–9    · CSV pre-computed Piotroski (reference only)
-    "PIOTROSKI_SCORE",   # 0–9    · Fresh YoY-based F-Score (primary)
-    "QUALITY_SCORE",     # 0–13.4 · Absolute-level quality addon
-    "COMBINED_SCORE",    # 0–22.4 · PIOTROSKI + QUALITY
+    "F_SCORE",
+    "PIOTROSKI_SCORE",
+    "QUALITY_SCORE",
+    "COMBINED_SCORE",
     "LOW_PROMOTER_FLAG",
 ]
 
@@ -70,12 +74,6 @@ KEY_COLS = [
 # =========================
 
 def score_metric(value, thresholds, reverse=False, max_pts=1.4):
-    """
-    4-tier linear scoring engine.
-    thresholds: [t1, t2, t3, t4] always in ASCENDING order.
-    Normal  (reverse=False): higher = better.
-    Reverse (reverse=True):  lower  = better.
-    """
     if pd.isna(value):
         return 0
     pts = [1.1, 1.2, 1.3, max_pts]
@@ -98,12 +96,8 @@ def score_metric(value, thresholds, reverse=False, max_pts=1.4):
 # =========================
 
 def _resolve_prior_cols(df: pd.DataFrame) -> dict:
-    """
-    Dynamically find the two most recent annual columns for each
-    Piotroski base metric. Supports MAR/DEC/SEP/JUN fiscal years.
-    """
     def _annual_cols(prefix):
-        pat = re.compile(rf"^{re.escape(prefix)}_(MAR|DEC|SEP|JUN)(\d{{4}})$")
+        pat = re.compile(rf"^{re.escape(prefix)}_(MAR|DEC|SEP|JUN)(\\d{{4}})$")
         hits = []
         for c in df.columns:
             m = pat.match(c)
@@ -143,13 +137,6 @@ def _resolve_prior_cols(df: pd.DataFrame) -> dict:
 # =========================
 
 def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
-    """
-    Genuine 9-point Piotroski F-Score from raw CSV columns.
-
-    Profitability:  F1 ROA>0  F2 CFO>0  F3 ΔROA>0  F4 CFO>Net Income
-    Leverage:       F5 Leverage↓  F6 Equity ratio↑  F7 No dilution
-    Efficiency:     F8 Gross margin↑  F9 Asset turnover↑
-    """
     def s(col):
         if col in df.columns:
             return pd.to_numeric(df[col], errors="coerce")
@@ -210,10 +197,6 @@ def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
 # =========================
 
 def calc_quality_score(df: pd.DataFrame) -> pd.Series:
-    """
-    9-factor absolute-level quality score with YoY direction bonuses/penalties.
-    Max theoretical ≈ 13.4
-    """
     def calc_row(x):
         score = 0.0
 
@@ -258,18 +241,6 @@ def calc_quality_score(df: pd.DataFrame) -> pd.Series:
 # =========================
 
 def calc_final_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    MASTER = (VAL_NORM × 0.40) + (PIOT_NORM × 0.35) + (QUAL_NORM × 0.25)
-
-    VAL_NORM   — MOS% normalised: -50 → 0,  +100 → 10
-    PIOT_NORM  — Piotroski 0–9  → 0–10
-    QUAL_NORM  — Quality 0–13.4 → 0–10
-
-    FINAL_SCORE: 0–10   FINAL_RANK: 1 = best
-
-    Grades (0–10 scale):
-      A ≥7.5  B+ ≥6.5  B ≥5.5  C ≥4.0  D ≥2.5  E <2.5
-    """
     df = df.copy()
 
     mos = pd.to_numeric(
@@ -331,7 +302,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
 
     df = df.copy()
 
-    # NET_DEBT_TO_EBITDA
     if "NET_DEBT_CR" in df.columns and "PL_EBITDA_CR" in df.columns:
         ebitda   = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce").replace(0, np.nan)
         net_debt = pd.to_numeric(df["NET_DEBT_CR"],  errors="coerce")
@@ -339,7 +309,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     else:
         df["NET_DEBT_TO_EBITDA"] = np.nan
 
-    # Promoter flag
     if "SH_PROMOTER_PCT_LATEST" in df.columns:
         df["LOW_PROMOTER_FLAG"] = (
             pd.to_numeric(df["SH_PROMOTER_PCT_LATEST"], errors="coerce") < 25
@@ -347,13 +316,11 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     else:
         df["LOW_PROMOTER_FLAG"] = False
 
-    # ── Compute all scores ───────────────────────────────────────────────
     df["PIOTROSKI_SCORE"] = calc_piotroski_fscore(df)
     df["QUALITY_SCORE"]   = calc_quality_score(df)
     df["COMBINED_SCORE"]  = (df["PIOTROSKI_SCORE"] + df["QUALITY_SCORE"]).round(2)
     df = calc_final_score(df)
 
-    # Debug stats
     for col in ["PIOTROSKI_SCORE", "QUALITY_SCORE", "COMBINED_SCORE", "FINAL_SCORE"]:
         s = df[col].dropna()
         print(f"    {col:20s}  min={s.min():.2f}  max={s.max():.2f}  avg={s.mean():.2f}")
@@ -361,7 +328,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     top5 = df.nsmallest(5, "FINAL_RANK")[["COMPANY_NAME", "FINAL_RANK", "FINAL_SCORE", "GRADE"]]
     print(f"    Top 5:\n{top5.to_string(index=False)}")
 
-    # Trim to output columns
     needed = ["COMPANY_NAME"] + KEY_COLS
     df = df[[c for c in needed if c in df.columns]]
 
@@ -375,6 +341,63 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
             )
 
     return df.to_dict(orient="records")
+
+
+# =========================
+# 🔐 HTML OBFUSCATOR
+# =========================
+
+def obfuscate_html(html: str) -> str:
+    """
+    Compresses and Base64-encodes the entire HTML payload, then wraps it
+    in a minimal self-decoding bootstrap page.
+
+    The browser receives only the bootstrap; the real HTML is stored as
+    a Base64 string and reconstructed at runtime via JavaScript.
+    No readable HTML structure, class names, data, or JS logic is
+    visible in the saved file.
+    """
+    compressed   = zlib.compress(html.encode("utf-8"), level=9)
+    b64_payload  = base64.b64encode(compressed).decode("ascii")
+
+    # Chunk the payload so no single line is meaningful
+    chunk_size = 120
+    chunks = [b64_payload[i:i+chunk_size]
+              for i in range(0, len(b64_payload), chunk_size)]
+    js_array = "[\n" + ",\n".join(f'"{c}"' for c in chunks) + "\n]"
+
+    bootstrap = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<script>
+(function(){{
+var _p={js_array};
+var _b=_p.join("");
+// base64 → Uint8Array
+function _d(s){{
+  var b=atob(s),u=new Uint8Array(b.length);
+  for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+  return u;
+}}
+// inflate via DecompressionStream (Chrome 80+, Firefox 113+, Safari 16.4+)
+async function _r(){{
+  var ds=new DecompressionStream("deflate");
+  var w=ds.writable.getWriter();
+  w.write(_d(_b));
+  w.close();
+  var out=[],rd=ds.readable.getReader();
+  while(true){{var{{done,value}}=await rd.read();if(done)break;out.push(value);}}
+  var total=out.reduce((a,v)=>a+v.length,0);
+  var buf=new Uint8Array(total);
+  var off=0;
+  out.forEach(function(v){{buf.set(v,off);off+=v.length;}});
+  var html=new TextDecoder().decode(buf);
+  document.open();document.write(html);document.close();
+}}
+_r();
+}})();
+</script>
+</head><body></body></html>"""
+
+    return bootstrap
 
 
 # =========================
@@ -415,8 +438,8 @@ def build(deploy=False):
     now = datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y\n%I:%M %p IST")
     html = html.replace("%%LAST_UPDATED_PLACEHOLDER%%", now)
 
-
-
+    # ── Obfuscate before writing ─────────────────────────────────────────
+    html = obfuscate_html(html)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(html, encoding="utf-8")
@@ -439,4 +462,3 @@ if __name__ == "__main__":
     ap.add_argument("--deploy", action="store_true", help="Deploy to Firebase after build")
     args = ap.parse_args()
     build(args.deploy)
-
