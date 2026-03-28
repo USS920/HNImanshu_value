@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -284,6 +285,8 @@ body.day .toggle-thumb { transform: translateX(16px); }
   padding: 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
   flex-shrink: 0; transition: background var(--transition), border-color var(--transition);
 }
+/* Push export button to the far right */
+#download-csv-btn { margin-left: auto; }
 .search-wrap { position: relative; display: flex; align-items: center; flex-shrink: 0; }
 .search-input {
   padding: 6px 28px 6px 12px; background: var(--bg);
@@ -318,6 +321,38 @@ body.day .toggle-thumb { transform: translateX(16px); }
   transition: all 0.12s; flex-shrink: 0;
 }
 .clear-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── EXPORT CSV BUTTON ── */
+#download-csv-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#download-csv-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+#download-csv-btn svg {
+  flex-shrink: 0;
+  transition: transform 0.18s;
+}
+#download-csv-btn:hover svg {
+  transform: translateY(1px);
+}
 
 /* TABLE */
 #table-wrap { flex: 1; overflow: auto; position: relative; }
@@ -634,6 +669,16 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     background: var(--accent); color: var(--bg);
     font-weight: 700; font-size: 14px; border: none; border-radius: 10px;
   }
+  /* Compact export button on mobile — bigger tap target, arrow + CSV */
+  #download-csv-btn {
+    padding: 7px 11px;
+    margin-left: 0;
+    font-size: 12px;
+    border-radius: 7px;
+  }
+  #download-csv-btn svg { width: 15px; height: 15px; }
+  #download-csv-btn .csv-full { display: none; }
+  #download-csv-btn .csv-short { display: inline; }
 }
 
 /* Hide mobile elements on desktop */
@@ -723,6 +768,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <button class="uni-btn active" id="btn-n500">Nifty 500</button>
     <button class="uni-btn" id="btn-sc250">Smallcap 500</button>
     <button class="uni-btn" id="btn-mc250">Microcap 250</button>
+    <button class="uni-btn" id="btn-all">All Stocks</button>
   </div>
   <div class="h-stats">
     <div class="hstat"><div class="hstat-val" id="hs-total">—</div><div class="hstat-lbl">Universe</div></div>
@@ -791,6 +837,16 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
       </div>
       
       <div class="result-count">Showing <span id="rc-span">—</span></div>
+
+      <!-- ── IMPROVED EXPORT CSV BUTTON ── -->
+      <button id="download-csv-btn" title="Export visible stocks as CSV">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6.5 1v7M6.5 8l-2.5-2.5M6.5 8l2.5-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M1.5 10.5h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <span class="csv-full">Export CSV</span>
+        <span class="csv-short" style="display:none">CSV</span>
+      </button>
     </div>
 
     <div id="mobile-count-bar">
@@ -879,6 +935,33 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 <script>
 %%DATASETS_PLACEHOLDER%%
 
+// ── All Stocks: merge all three universes, deduplicate by SYMBOL,
+//    then RE-RANK sequentially by FINAL_SCORE descending ──
+(function(){
+  var seen = {};
+  var merged = [];
+  var sources = (DATASETS.n500||[]).concat(DATASETS.sc250||[]).concat(DATASETS.mc250||[]);
+  for(var i=0;i<sources.length;i++){
+    var s=sources[i];
+    if(s.SYMBOL && !seen[s.SYMBOL]){
+      seen[s.SYMBOL]=true;
+      // shallow-clone so we don't mutate the original dataset objects
+      merged.push(Object.assign({}, s));
+    }
+  }
+  // Sort by FINAL_SCORE descending (nulls go to end)
+  merged.sort(function(a,b){
+    var av = a.FINAL_SCORE != null ? +a.FINAL_SCORE : -Infinity;
+    var bv = b.FINAL_SCORE != null ? +b.FINAL_SCORE : -Infinity;
+    return bv - av;
+  });
+  // Assign fresh sequential ranks
+  for(var j=0;j<merged.length;j++){
+    merged[j].FINAL_RANK = j + 1;
+  }
+  DATASETS.all = merged;
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
 const GC = {A:'#5a9e6f','B+':'#4a8f5e',B:'#6aaa7a',C:'#b8962e',D:'#c47a5a',E:'#a06878'};
 const FV_MAP = {
@@ -921,6 +1004,7 @@ function switchUniverse(u) {
   document.getElementById('btn-n500').classList.toggle('active', u === 'n500');
   document.getElementById('btn-sc250').classList.toggle('active', u === 'sc250');
   document.getElementById('btn-mc250').classList.toggle('active', u === 'mc250');
+  document.getElementById('btn-all').classList.toggle('active', u === 'all');
   searchQ = '';
   document.getElementById('search-inp').value = '';
   updateSearchClearBtn();
@@ -1241,6 +1325,73 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
   document.getElementById('btn-n500').addEventListener('click', function(){ switchUniverse('n500'); });
   document.getElementById('btn-sc250').addEventListener('click', function(){ switchUniverse('sc250'); });
   document.getElementById('btn-mc250').addEventListener('click', function(){ switchUniverse('mc250'); });
+  document.getElementById('btn-all').addEventListener('click', function(){ switchUniverse('all'); });
+
+  document.getElementById('download-csv-btn').addEventListener('click', function(){
+    if(!viewData || !viewData.length){ alert('No data to export.'); return; }
+    var cols = ['FINAL_RANK','COMPANY_NAME','SYMBOL','INDUSTRY','GRADE','FV_GRADE','CMP',
+                'COMPOSITE_FAIR_VALUE','UPSIDE_PCT','MARGIN_OF_SAFETY_PCT','PE',
+                'ROE_PCT','ROCE_PCT','DIV_YIELD_PCT','PL_OPM_PCT','NET_MARGIN_CALC_PCT',
+                'REVENUE_CAGR_3YR_PCT','PAT_CAGR_3YR_PCT','SH_PROMOTER_PCT_LATEST',
+                'F_SCORE','PIOTROSKI_SCORE','QUALITY_SCORE','COMBINED_SCORE','FINAL_SCORE',
+                'MARKET_CAP_CR'];
+    var lines = [cols.join(',')];
+    viewData.forEach(function(r){
+      lines.push(cols.map(function(c){
+        var v = r[c];
+        if(v==null) return '';
+        var s = String(v);
+        if(s.indexOf(',')!==-1 || s.indexOf('"')!==-1 || s.indexOf('\n')!==-1)
+          s = '"' + s.replace(/"/g,'""') + '"';
+        return s;
+      }).join(','));
+    });
+
+    // ── Smart filename: HNI_Value[_universe][_smart-filters][_grades][_fv].csv ──
+    var parts = ['HNI', 'Value'];
+
+    // Universe segment (skip for 'all' which is implied)
+    var uMap = {n500:'N500', sc250:'SC500', mc250:'MC250', all:'All'};
+    parts.push(uMap[universe] || universe.toUpperCase());
+
+    // Smart filters
+    if(document.getElementById('sf-piotroski')?.checked) parts.push('ps8');
+    if(document.getElementById('sf-netmargin')?.checked)  parts.push('nm15');
+    if(document.getElementById('sf-roe')?.checked)        parts.push('roe20');
+    if(document.getElementById('sf-revgrowth')?.checked)  parts.push('rg10');
+
+    // Active grade filters — A, Bplus, B, C, D, E (no special chars in filename)
+    if(activeGrades.size) {
+      var gradeSlug = Array.from(activeGrades)
+        .sort(function(a,b){ var o={A:1,'B+':2,B:3,C:4,D:5,E:6}; return (o[a]||9)-(o[b]||9); })
+        .map(function(g){ return g.replace('+','plus'); })
+        .join('_');
+      parts.push(gradeSlug);
+    }
+
+    // Active FV filters — DV, UV, FA, FP, OV
+    if(activeFVs.size) {
+      var fvSlugMap = {'DEEP VALUE':'DV','UNDERVALUED':'UV','FAIR':'FA','FULLY PRICED':'FP','OVERVALUED':'OV'};
+      var fvSlug = Array.from(activeFVs)
+        .map(function(f){ return fvSlugMap[f]||f.replace(/\s+/g,''); })
+        .join('_');
+      parts.push(fvSlug);
+    }
+
+    // Search query (truncated to 12 chars, spaces→underscore)
+    if(searchQ && searchQ.trim()) {
+      parts.push(searchQ.trim().slice(0,12).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,''));
+    }
+
+    var filename = parts.join('_') + '.csv';
+
+    var blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  });
   document.getElementById('search-inp').addEventListener('input', function(){ handleSearch(this.value); });
   document.getElementById('search-clear-btn').addEventListener('click', function(){
     const inp=document.getElementById('search-inp');
