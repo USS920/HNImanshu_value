@@ -1,3 +1,9 @@
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -843,8 +849,13 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     </div>
     <p>Everything here is built to keep investing simple, structured, and disciplined.</p>
     <div class="wm-tagline">No noise. No hype. Just data.</div>
-    <div class="wm-disclaimer">⚠️ A higher rank does not guarantee a good investment, and a lower rank does not mean a bad one.</div>
-    <button id="wm-btn">I Understand</button>
+    <div class="wm-disclaimer">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="wm-check" style="margin-top:3px;cursor:pointer;">
+        <span>⚠️ A higher rank does not guarantee a good investment, and a lower rank does not mean a bad one.</span>
+      </label>
+    </div>
+    <button id="wm-btn" disabled style="opacity:0.5;cursor:not-allowed;">I Understand</button>
   </div>
 </div>
 
@@ -1130,7 +1141,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   try {
     var key = 'hnimanshu_welcome_seen';
     var today = new Date().toDateString();
-    if(localStorage.getItem(key) !== today) {
+    if(localStorage.getItem(key) == today) {
       var el = document.getElementById('wm-overlay');
       el.style.display = 'flex';
     }
@@ -1662,6 +1673,54 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
 
 }); // end DOMContentLoaded
 </script>
+
+<script>
+(function(){
+  try {
+    var key = 'hnimanshu_welcome_seen';
+    var now = Date.now();
+    var tenMin = 10 * 60 * 1000;
+
+    var lastSeen = parseInt(localStorage.getItem(key) || 0, 10);
+    
+    if (!lastSeen || (now - lastSeen) > tenMin) {
+      var el = document.getElementById('wm-overlay');
+      el.style.display = 'flex';
+    }
+
+    var btn = document.getElementById('wm-btn');
+    var check = document.getElementById('wm-check');
+
+    check.addEventListener('change', function(){
+      if (check.checked) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      }
+    });
+
+    btn.addEventListener('click', function(){
+      var el = document.getElementById('wm-overlay');
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.25s ease';
+      setTimeout(function(){
+        el.style.display = 'none';
+        el.style.opacity = '';
+      }, 260);
+
+      try { localStorage.setItem(key, Date.now()); } catch(e){}
+    });
+
+  } catch(e){}
+})();
+</script>
+
 </body>
 </html>
+
+
 
