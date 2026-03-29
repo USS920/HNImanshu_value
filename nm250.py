@@ -388,7 +388,7 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     ycols_pl = _ycols(df_pl)
 
     if ycols_pl:
-        annual_ycols = [c for c in ycols if not re.search(r'TTM|trailing', c, re.I)]
+        annual_ycols = [c for c in ycols_pl if not re.search(r'TTM|trailing', c, re.I)]
         ly = annual_ycols[-1] if annual_ycols else ycols[-1]
         r.update(_map_rows(df_pl, PL_ROW_MAP, ly))
         r.update(_map_all_years(df_pl, PL_ROW_MAP, ycols_pl, prefix="A_"))
