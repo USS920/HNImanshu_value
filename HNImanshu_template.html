@@ -1677,7 +1677,7 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
 
     var lastSeen = parseInt(localStorage.getItem(key) || 0, 10);
     
-    if (!lastSeen || (now - lastSeen) < tenMin) {
+    if (!lastSeen || (now - lastSeen) > tenMin) {
       var el = document.getElementById('wm-overlay');
       el.style.display = 'flex';
     }
