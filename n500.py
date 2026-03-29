@@ -404,7 +404,19 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
             if len(ycols_pl) >= yrs + 1:
                 sl = ycols_pl[-(yrs+1):]
                 r[f"REVENUE_CAGR_{lbl}_PCT"] = _cagr_pct([_val(rev_row, c) for c in sl])
-                r[f"PAT_CAGR_{lbl}_PCT"]     = _cagr_pct([_val(pat_row, c) for c in sl])
+                core_series = []
+                for c in sl:
+                    yr = re.sub(r"[^A-Z0-9]", "", c.upper())
+                
+                    pat = _safe(r.get(f"A_PL_PAT_CR_{yr}"))
+                    oi  = _safe(r.get(f"A_PL_OTHER_INCOME_CR_{yr}"))
+                
+                    if pat is not None:
+                        pat = pat - (oi * 0.75 if oi else 0)
+                
+                    core_series.append(pat)
+                
+                r[f"PAT_CAGR_{lbl}_PCT"] = _cagr_pct(core_series)
                 r[f"EPS_CAGR_{lbl}_PCT"]     = _cagr_pct([_val(eps_row, c) for c in sl])
 
         opm_row = _find_row(df_pl, "opm %", "operating margin")
@@ -506,8 +518,12 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
 
         mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
-        if mc and cmp and cmp > 0:
-            r["SHARES_CR"] = mc / cmp
+        # 🔥 CORE EPS (fix all valuation models)
+        shares = _safe(r.get("SHARES_CR"))
+        pat    = _safe(r.get("PL_PAT_CR"))
+        
+        if shares and pat and shares > 0:
+            r["PL_EPS_BASIC"] = round(pat / shares, 2)
 
         _eq_bs  = _safe(r.get("BS_TOTAL_EQUITY_CR"))
         _pat_bs = _safe(r.get("PL_PAT_CR"))
@@ -533,6 +549,15 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     tr   = _safe(r.get("PL_TAX_RATE_PCT"))
     _pat = _safe(r.get("PL_PAT_CR"))
     _eq  = _safe(r.get("BS_TOTAL_EQUITY_CR"))
+    
+    # 🔥 CORE PAT OVERRIDE (fix everything downstream)
+    if _pat is not None:
+        if oi is not None and tr is not None:
+            _pat = _pat - oi * (1 - tr / 100)
+        elif oi is not None:
+            _pat = _pat - oi * 0.75
+    
+        r["PL_PAT_CR"] = round(_pat, 2)
     if _pat and oi and _eq and _eq > 0 and tr is not None:
         _pat_adj = _pat - oi * (1 - tr / 100)
         r["ROE_ADJ_EX_OTHER_INCOME_PCT"] = round(_pat_adj / _eq * 100, 2)
