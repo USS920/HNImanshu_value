@@ -386,13 +386,12 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
 
     if ycols_pl:
         #annual_ycols = [c for c in ycols_pl if not re.search(r'TTM|trailing', c, re.I)]
-        annual_ycols = [c for c in ycols_plif not re.search(r'TTM|trailing', c, re.I)and re.search(r'Mar\s*\d{4}', c, re.I)]
+        #annual_ycols = [c for c in ycols_plif not re.search(r'TTM|trailing', c, re.I)and re.search(r'Mar\s*\d{4}', c, re.I)]
         annual_ycols = [
-            c for c in ycols_pl
-            if not re.search(r'TTM|trailing', c, re.I)
-            and re.search(r'\d{4}', c)               # has a year
-            and len([x for x in ycols_pl if c[:3] in x]) >= 3  # month appears 3+ times = it's annual
-        ]
+                c for c in ycols_pl
+                if not re.search(r'TTM|trailing', c, re.I)
+                and re.search(r'(Mar|Dec|Jun|Sep)\s*\d{4}', c, re.I)
+            ]
         ly = annual_ycols[-1] if annual_ycols else ycols[-1]
         r.update(_map_rows(df_pl, PL_ROW_MAP, ly))
         r.update(_map_all_years(df_pl, PL_ROW_MAP, ycols_pl, prefix="A_"))
@@ -525,13 +524,13 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         pd_ = _safe(r.get("PAYABLE_DAYS"))
         if dd is not None and id_ is not None and pd_ is not None and not r.get("CASH_CONVERSION_CYCLE"):
             r["CASH_CONVERSION_CYCLE"] = round(dd + id_ - pd_, 1)
-            mc  = _safe(r.get("MARKET_CAP_CR"))
+
+        mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
 
         # ── Derive SHARES_CR from Market Cap ÷ CMP ──────────────────────
-        # MC is in Crores (e.g. 2,30,086 Cr), CMP is the stock price (₹1193)
+        # MC is in Crores, CMP is the stock price in ₹
         # shares_in_crores = MC_in_crores / CMP
-        # e.g. 2,30,086 / 1193 = 193 Cr shares  ✅
         if mc and cmp and cmp > 0 and not r.get("SHARES_CR"):
             r["SHARES_CR"] = round(mc / cmp, 4)
 
@@ -539,16 +538,11 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         eq_cap   = _safe(r.get("BS_SHARE_CAPITAL_CR"))
         face_val = _safe(r.get("FACE_VALUE"))
         if not r.get("SHARES_CR") and eq_cap and face_val and face_val > 0:
-            # BS_SHARE_CAPITAL_CR is in Cr (absolute), face_value in Rs
-            # shares = (equity_capital_in_rupees) / face_value
-            # equity_capital_in_rupees = eq_cap * 1e7
-            r["SHARES_CR"] = round((eq_cap * 1e7) / face_value / 1e7, 4)
-            # simplifies to: eq_cap / face_val (already in crores if FV=1)
+            r["SHARES_CR"] = round(eq_cap / face_val, 4)
 
         # 🔥 CORE EPS (fix all valuation models)
         shares = _safe(r.get("SHARES_CR"))
         pat    = _safe(r.get("PL_PAT_CR"))
-        
         if shares and pat and shares > 0:
             r["PL_EPS_BASIC"] = round(pat / shares, 2)
 
