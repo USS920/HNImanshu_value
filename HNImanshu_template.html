@@ -1233,7 +1233,7 @@ function buildNewsHTML(sym){
     if(n.time)   metaHtml += '<span class="news-item-time">'+esc(n.time)+'</span>';
     if(n.tag)    metaHtml += '<span class="news-item-tag '+tagCls+'">'+tagLbl+'</span>';
 
-    return '<div class="news-item" onclick="window.open(\''+(n.url || '')+'\', \'_blank\')">'
+    return '<div class="news-item" onclick="window.open((\''+(n.url || '')+'\'.startsWith(\'http\') ? \''+(n.url || '')+'\' : \'https://'+(n.url || '')+'\'), \'_blank\')">'
       +'<div class="news-item-headline">'+esc(n.headline)+'</div>'
       +(metaHtml?'<div class="news-item-meta">'+metaHtml+'</div>':'')
       +'</div>';
