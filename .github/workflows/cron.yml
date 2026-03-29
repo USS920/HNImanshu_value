@@ -37,7 +37,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Running fetch_news.py..."
-          python fetch_news.py || echo "fetch_news failed"
+          #python fetch_news.py || echo "fetch_news failed"
           
           echo "Running n500.py..."
           python n500.py || echo "n500 failed"
