@@ -41,7 +41,7 @@ SKIP_DOWNLOAD  = False   # True  → skip ALL downloading, jump to analysis
 REFRESH_DAYS   = 30      # re-download if CSV is older than this many days
 REQUEST_DELAY  = 1.5     # seconds between Screener.in requests
 # ══════════════════════════════════════════════════════════════════════════════
-
+#https://www.niftyindices.com/IndexConstituent/ind_NiftySmallcap500_list.csv
 # ── Network constants ─────────────────────────────────────────────────────────
 INDEX = "niftymicrocap250"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
@@ -50,7 +50,7 @@ INDEX = "nifty500"     #Keep this line as i need both
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
 
 INDEX = "niftysmallcap500"
-NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
+NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
 
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
