@@ -53,11 +53,20 @@ INDEX = "nifty500"     #Keep this line as i need both
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import os
+
 try:
-    if dt.now().hour <= 15:
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+
+    if ist_time.hour <= 15:
         os.remove(OUTPUT_FILE)
-except:
-    pass
+        print(f"File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
+
+except Exception as e:
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    print(f"Delete failed at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST | Error: {e}")
 
 NSE_HDR = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0.0.0 Safari/537.36",
