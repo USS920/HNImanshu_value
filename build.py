@@ -147,7 +147,8 @@ def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
 
     pat_c = s("PL_PAT_CR")
     ta_c  = nz(s("BS_TOTAL_ASSETS_CR"))
-    cfo_c = s("CF_OPERATING_CR")
+    #cfo_c = s("CF_OPERATING_CR") #change for piotrosky.
+    cfo_c = s("CF_OPERATING_CR") - s("PL_OTHER_INCOME_CR")
     opm_c = s("PL_OPM_PCT")
     rev_c = s("PL_REVENUE_CR")
     int_c = s("PL_INTEREST_CR")
