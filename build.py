@@ -450,14 +450,11 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     df = df.copy()
 
     # NET_DEBT_TO_EBITDA
-    try:
-        if "NET_DEBT_CR" in df.columns and "PL_EBITDA_CR" in df.columns:
-            ebitda   = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce").replace(0, np.nan)
-            net_debt = pd.to_numeric(df["NET_DEBT_CR"],  errors="coerce")
-            df["NET_DEBT_TO_EBITDA"] = net_debt / ebitda
-        else:
-            df["NET_DEBT_TO_EBITDA"] = np.nan
-    except:
+    if "NET_DEBT_CR" in df.columns and "PL_EBITDA_CR" in df.columns:
+        ebitda   = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce").replace(0, np.nan)
+        net_debt = pd.to_numeric(df["NET_DEBT_CR"],  errors="coerce")
+        df["NET_DEBT_TO_EBITDA"] = net_debt / ebitda
+    else:
         df["NET_DEBT_TO_EBITDA"] = np.nan
 
     # Promoter flag
