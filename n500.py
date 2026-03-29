@@ -519,8 +519,26 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         if dd is not None and id_ is not None and pd_ is not None and not r.get("CASH_CONVERSION_CYCLE"):
             r["CASH_CONVERSION_CYCLE"] = round(dd + id_ - pd_, 1)
 
-        mc  = _safe(r.get("MARKET_CAP_CR"))
+                mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
+
+        # ── Derive SHARES_CR from Market Cap ÷ CMP ──────────────────────
+        # MC is in Crores (e.g. 2,30,086 Cr), CMP is the stock price (₹1193)
+        # shares_in_crores = MC_in_crores / CMP
+        # e.g. 2,30,086 / 1193 = 193 Cr shares  ✅
+        if mc and cmp and cmp > 0 and not r.get("SHARES_CR"):
+            r["SHARES_CR"] = round(mc / cmp, 4)
+
+        # Also try from balance sheet: equity capital / face value
+        eq_cap   = _safe(r.get("BS_SHARE_CAPITAL_CR"))
+        face_val = _safe(r.get("FACE_VALUE"))
+        if not r.get("SHARES_CR") and eq_cap and face_val and face_val > 0:
+            # BS_SHARE_CAPITAL_CR is in Cr (absolute), face_value in Rs
+            # shares = (equity_capital_in_rupees) / face_value
+            # equity_capital_in_rupees = eq_cap * 1e7
+            r["SHARES_CR"] = round((eq_cap * 1e7) / face_value / 1e7, 4)
+            # simplifies to: eq_cap / face_val (already in crores if FV=1)
+
         # 🔥 CORE EPS (fix all valuation models)
         shares = _safe(r.get("SHARES_CR"))
         pat    = _safe(r.get("PL_PAT_CR"))
@@ -937,13 +955,23 @@ def fv_ev_ebitda(row):
     shares = _g(row, "SHARES_CR")
     if not (ebitda and shares and ebitda > 0 and shares > 0):
         return None
-    ev = 15 * ebitda + cash - debt
+    roe = _g(row, "ROE_PCT", "ROE_CALC_PCT") or 15
+    roce = _g(row, "ROCE_PCT") or 15
+    # High-quality stocks (ROE > 25%) deserve 30–40x; normal = 12–18x
+    if roe > 40 or roce > 40:
+        multiple = 35
+    elif roe > 20 or roce > 20:
+        multiple = 22
+    else:
+        multiple = 15
+    
+    ev = multiple * ebitda + cash - debt
     return round(ev / shares, 2) if ev > 0 else None
 
 def fv_pe_mean(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     ipe = _g(row, "INDUSTRY_PE")
-    tpe = min(ipe, 25) if ipe and ipe > 5 else 20
+    tpe = min(ipe, 60) if ipe and ipe > 5 else 25     # ← raised cap to 60
     return round(eps * tpe, 2) if eps and eps > 0 else None
 
 def fv_pb(row):
@@ -952,7 +980,7 @@ def fv_pb(row):
     if not (bv and roe and bv > 0 and roe > 0):
         return None
     coe = RISK_FREE + EQUITY_PREMIUM
-    pb  = min(max((roe / 100) / coe, 0.5), 10)
+    pb  = min(max((roe / 100) / coe, 0.5), 15)
     return round(bv * pb, 2)
 
 def fv_ddm(row):
@@ -1024,11 +1052,11 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
     
                 values.append(v)
     
-        if len(values) < 3:
+        if len(values) < 2:
             return None
     
         # 🔥 your disagreement filter (perfect)
-        if min(values) / max(values) < 0.1:
+        if min(values) / max(values) < 0.05:
             return None
     
         if len(values) <= 5:
