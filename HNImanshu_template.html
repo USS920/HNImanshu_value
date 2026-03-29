@@ -1223,14 +1223,17 @@ function combinedClass(v){ if(v==null||v==='')return'n-neu'; var n=+v; if(n>=15)
 function buildNewsHTML(sym){
   var items = NEWS_DATA[sym] || NEWS_DATA['__default__'] || [];
   if(!items.length) return '<div class="news-empty">No recent news available.</div>';
+
   return items.map(function(n){
     var tagCls = n.tag==='pos'?'news-tag-pos':n.tag==='neg'?'news-tag-neg':'news-tag-neu';
     var tagLbl = n.tag==='pos'?'+VE':n.tag==='neg'?'-VE':'NEU';
+
     var metaHtml = '';
     if(n.source) metaHtml += '<span class="news-item-src">'+esc(n.source)+'</span>';
     if(n.time)   metaHtml += '<span class="news-item-time">'+esc(n.time)+'</span>';
     if(n.tag)    metaHtml += '<span class="news-item-tag '+tagCls+'">'+tagLbl+'</span>';
-    return '<div class="news-item">'
+
+    return '<div class="news-item" onclick="window.open(\''+(n.url || '')+'\', \'_blank\')">'
       +'<div class="news-item-headline">'+esc(n.headline)+'</div>'
       +(metaHtml?'<div class="news-item-meta">'+metaHtml+'</div>':'')
       +'</div>';
