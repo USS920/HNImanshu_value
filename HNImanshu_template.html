@@ -1131,23 +1131,23 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 })();
 
 // ── WELCOME OVERLAY (once per day) ──
-(function(){
-  try {
-    var key = 'hnimanshu_welcome_seen';
-    var today = new Date().toDateString();
-    if(localStorage.getItem(key) == today) {
-      var el = document.getElementById('wm-overlay');
-      el.style.display = 'flex';
-    }
-    document.getElementById('wm-btn').addEventListener('click', function(){
-      var el = document.getElementById('wm-overlay');
-      el.style.opacity = '0';
-      el.style.transition = 'opacity 0.25s ease';
-      setTimeout(function(){ el.style.display = 'none'; el.style.opacity = ''; }, 260);
-      try { localStorage.setItem(key, today); } catch(e){}
-    });
-  } catch(e){}
-})();
+//(function(){
+//  try {
+    //var key = 'hnimanshu_welcome_seen';
+    //var today = new Date().toDateString();
+    //if(localStorage.getItem(key) == today) {
+      //var el = document.getElementById('wm-overlay');
+      //el.style.display = 'flex';
+    //}
+    //document.getElementById('wm-btn').addEventListener('click', function(){
+//      var el = document.getElementById('wm-overlay');
+      //el.style.opacity = '0';
+      //el.style.transition = 'opacity 0.25s ease';
+      //setTimeout(function(){ el.style.display = 'none'; el.style.opacity = ''; }, 260);
+      //try { localStorage.setItem(key, today); } catch(e){}
+    //});
+  //} catch(e){}
+//})();
 
 document.addEventListener('DOMContentLoaded', function() {
 const GC = {A:'#5a9e6f','B+':'#4a8f5e',B:'#6aaa7a',C:'#b8962e',D:'#c47a5a',E:'#a06878'};
@@ -1671,7 +1671,7 @@ function fmtMC(v){if(!v)return '—';if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr';i
 <script>
 (function(){
   try {
-    var key = 'hnimanshu_welcome_seen';
+    var key = 'hnimanshu_welcome_seen_10m';
     var now = Date.now();
     var tenMin = 10 * 60 * 1000;
 
