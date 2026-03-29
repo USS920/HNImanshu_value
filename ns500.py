@@ -43,6 +43,16 @@ REQUEST_DELAY  = 1.5     # seconds between Screener.in requests
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Network constants ─────────────────────────────────────────────────────────
+
+
+INDEX = "nifty500"     #Keep this line as i need both
+NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
+
+
+INDEX = "niftymicrocap250"
+NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
+
+
 INDEX = "niftysmallcap500"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
 
@@ -919,6 +929,12 @@ def fv_dcf(row):
 
 def fv_ev_ebitda(row):
     ebitda = _g(row, "PL_EBITDA_CR")
+    oi     = _g(row, "PL_OTHER_INCOME_CR")
+    
+    # 🔥 remove non-operating income
+    if ebitda and oi:
+        ebitda = ebitda - oi
+      
     cash   = _g(row, "BS_CASH_CR") or 0
     debt   = _g(row, "BS_TOTAL_BORROWINGS_CR") or 0
     shares = _g(row, "SHARES_CR")
@@ -960,6 +976,11 @@ def fv_ddm(row):
 
 def fv_epv(row):
     ebitda = _g(row, "PL_EBITDA_CR")
+    oi     = _g(row, "PL_OTHER_INCOME_CR")
+    
+    # 🔥 remove non-operating income
+    if ebitda and oi:
+        ebitda = ebitda - oi
     depr   = _g(row, "PL_DEPR_CR") or 0
     tax    = _g(row, "PL_TAX_RATE_PCT")
     cash   = _g(row, "BS_CASH_CR") or 0
