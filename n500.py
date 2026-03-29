@@ -1235,16 +1235,29 @@ def compute_final_score(df):
         df.apply(missing_data_penalty, axis=1)
     ).round(2)
 
-    # ❗ FILTER BAD DATA (VERY IMPORTANT)
-    df = df[
-        df["COMPOSITE_FAIR_VALUE"].notna() &
-        df["ROE_PCT"].notna() &
-        df["PE"].notna()
-    ]
+    # ❗ FILL NaN FAIR VALUES
+    df["COMPOSITE_FAIR_VALUE"] = pd.to_numeric(df["COMPOSITE_FAIR_VALUE"], errors='coerce').fillna(0)
+    df["FV_GRAHAM"] = pd.to_numeric(df["FV_GRAHAM"], errors='coerce').fillna(0)
+    df["FV_PETER_LYNCH"] = pd.to_numeric(df["FV_PETER_LYNCH"], errors='coerce').fillna(0)
+    df["FV_DCF"] = pd.to_numeric(df["FV_DCF"], errors='coerce').fillna(0)
+    df["FV_EV_EBITDA"] = pd.to_numeric(df["FV_EV_EBITDA"], errors='coerce').fillna(0)
+
+    # ❗ QUALITY FLAGS
+    df["DATA_QUALITY"] = "GOOD"
+    df.loc[df["COMPOSITE_FAIR_VALUE"] == 0, "DATA_QUALITY"] = "NO_VALID_MODELS"
+    df.loc[df["ROE_PCT"].isna(), "DATA_QUALITY"] += ";NO_ROE"
+    df.loc[df["PE"].isna(), "DATA_QUALITY"] += ";NO_PE"
+
+    # ❗ FILL NaN COMPONENTS (prevents FINAL_SCORE NaN)
+    component_cols = ['val_score', 'mos', 'quality', 'growth', 'safety']
+    for col in component_cols:
+        if col in df.columns:
+            df[col] = df[col].fillna(0)
 
     df["FINAL_RANK"] = df["FINAL_SCORE"].rank(ascending=False, method="min").astype(int)
 
     def grade(s):
+        if pd.isna(s): return "F"
         if s >= 80: return "A"
         if s >= 65: return "B"
         if s >= 50: return "C"
@@ -1253,7 +1266,18 @@ def compute_final_score(df):
 
     df["GRADE"] = df["FINAL_SCORE"].apply(grade)
 
+    # 📊 FINAL SUMMARY (fixed indentation)
+    print(f"""
+📊 FINAL SUMMARY:
+  Total stocks: {len(df)}
+  Zero fair value: {(df['COMPOSITE_FAIR_VALUE'] == 0).sum()}
+  Top score: {df['FINAL_SCORE'].max():.1f}
+  A-grade: {(df['GRADE'] == 'A').sum()}
+  DATA_QUALITY breakdown:
+{df['DATA_QUALITY'].value_counts().to_dict()}""")
+    
     return df
+    
 
 
 # ══════════════════════════════════════════════════════════════════════════════
