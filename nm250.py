@@ -1885,7 +1885,7 @@ def main():
     log.info("Computing final composite score …")
     df = compute_final_score(df)
 
-    df = df[df["COMPOSITE_FAIR_VALUE"].notna()]
+    #df = df[df["COMPOSITE_FAIR_VALUE"].notna()]
     df.to_csv(out, index=False)
 
     
