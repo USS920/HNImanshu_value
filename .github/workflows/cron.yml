@@ -68,7 +68,7 @@ jobs:
           git pull origin main || echo "pull failed"
           git stash pop || echo "nothing to pop"
 
-          git add nifty500_valuation.csv niftymicrocap250_valuation.csv NiftySmallcap500_valuation.csv public/index.html
+          git add nifty500_valuation.csv niftymicrocap250_valuation.csv NiftySmallcap500_valuation.csv multi_stock_news.csv public/index.html
 
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
 
