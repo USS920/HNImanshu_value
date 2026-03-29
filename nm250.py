@@ -21,13 +21,13 @@ import argparse, time, sys, re, io, math, logging, csv, os
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
-
+import itertools
 import requests
 import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-
+from datetime import datetime as dt
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -42,21 +42,20 @@ REFRESH_DAYS   = 30      # re-download if CSV is older than this many days
 REQUEST_DELAY  = 1.5     # seconds between Screener.in requests
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Network constants ─────────────────────────────────────────────────────────
-
 INDEX = "niftysmallcap500"
 NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
 
 INDEX = "nifty500"     #Keep this line as i need both
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
-
+# ── Network constants ─────────────────────────────────────────────────────────
 INDEX = "niftymicrocap250"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
 
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
 try:
-    os.remove(OUTPUT_FILE)
+    if dt.now().hour == 15:
+        os.remove(OUTPUT_FILE)
 except:
     pass
 
@@ -387,8 +386,14 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     ycols_pl = _ycols(df_pl)
 
     if ycols_pl:
-        annual_ycols = [c for c in ycols_pl if not re.search(r'TTM|trailing', c, re.I)]
-        ly = annual_ycols[-1] if annual_ycols else ycols[-1]
+        #annual_ycols = [c for c in ycols_pl if not re.search(r'TTM|trailing', c, re.I)]
+        #annual_ycols = [c for c in ycols_plif not re.search(r'TTM|trailing', c, re.I)and re.search(r'Mar\s*\d{4}', c, re.I)]
+        annual_ycols = [
+                c for c in ycols_pl
+                if not re.search(r'TTM|trailing', c, re.I)
+                and re.search(r'(Mar|Dec|Jun|Sep)\s*\d{4}', c, re.I)
+            ]
+        ly = annual_ycols[-1] if annual_ycols else ycols_pl[-1]
         r.update(_map_rows(df_pl, PL_ROW_MAP, ly))
         r.update(_map_all_years(df_pl, PL_ROW_MAP, ycols_pl, prefix="A_"))
 
@@ -523,10 +528,22 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
 
         mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
+
+        # ── Derive SHARES_CR from Market Cap ÷ CMP ──────────────────────
+        # MC is in Crores, CMP is the stock price in ₹
+        # shares_in_crores = MC_in_crores / CMP
+        if mc and cmp and cmp > 0 and not r.get("SHARES_CR"):
+            r["SHARES_CR"] = round(mc / cmp, 4)
+
+        # Also try from balance sheet: equity capital / face value
+        eq_cap   = _safe(r.get("BS_SHARE_CAPITAL_CR"))
+        face_val = _safe(r.get("FACE_VALUE"))
+        if not r.get("SHARES_CR") and eq_cap and face_val and face_val > 0:
+            r["SHARES_CR"] = round(eq_cap / face_val, 4)
+
         # 🔥 CORE EPS (fix all valuation models)
         shares = _safe(r.get("SHARES_CR"))
         pat    = _safe(r.get("PL_PAT_CR"))
-        
         if shares and pat and shares > 0:
             r["PL_EPS_BASIC"] = round(pat / shares, 2)
 
@@ -874,15 +891,52 @@ def _bracket(v, lower, thresholds, points):
 
 def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+
+    def _fcol(df, key):
+        k = key.upper()
+        for c in df.columns:
+            if k in c.upper():
+                return c
+        return None
+
+    def _bracket(v, lower, thresholds, points):
+        try:
+            v = float(v)
+        except:
+            return 0
+        if pd.isna(v):
+            return 0
+
+        if lower:
+            for i in range(len(thresholds) - 1):
+                if v <= thresholds[i + 1]:
+                    return points[i]
+            return points[-1]
+        else:
+            for i, t in enumerate(thresholds):
+                if v >= t:
+                    return points[i]
+            return 0
+
+    # 🔥 REMOVE old scores (force recompute)
+    df = df[[c for c in df.columns if not c.startswith("SCORE_")]]
+
     scols = []
+
     for key, lb, thr, pts in SCORE_METRICS:
         col = _fcol(df, key)
         sc  = f"SCORE_{key}"
         scols.append(sc)
-        df[sc] = df[col].apply(lambda v: _bracket(v, lb, thr, pts)) if col else 0
-    df["VALUATION_SCORE"]     = df[scols].sum(axis=1)
+
+        if col:
+            df[sc] = df[col].apply(lambda v: _bracket(v, lb, thr, pts))
+        else:
+            df[sc] = 0
+
+    df["VALUATION_SCORE"] = df[scols].sum(axis=1)
     df["VALUATION_SCORE_PCT"] = (df["VALUATION_SCORE"] / MAX_SCORE * 100).round(1)
-    df["VALUATION_RANK"]      = df["VALUATION_SCORE"].rank(ascending=False, method="min").astype(int)
+    df["VALUATION_RANK"] = df["VALUATION_SCORE"].rank(ascending=False, method="min").astype(int)
+
     return df
 
 
@@ -905,6 +959,7 @@ def fv_graham(row):
 def fv_lynch(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     g   = _g(row, "EPS_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT")
+    g   = min(g, 25) if g else None
     return round(eps * g, 2) if eps and g and eps > 0 and g > 0 else None
 
 def fv_dcf(row):
@@ -939,13 +994,23 @@ def fv_ev_ebitda(row):
     shares = _g(row, "SHARES_CR")
     if not (ebitda and shares and ebitda > 0 and shares > 0):
         return None
-    ev = 15 * ebitda + cash - debt
+    roe = _g(row, "ROE_PCT", "ROE_CALC_PCT") or 15
+    roce = _g(row, "ROCE_PCT") or 15
+    # High-quality stocks (ROE > 25%) deserve 30–40x; normal = 12–18x
+    if roe > 40 or roce > 40:
+        multiple = 35
+    elif roe > 20 or roce > 20:
+        multiple = 22
+    else:
+        multiple = 15
+    
+    ev = multiple * ebitda + cash - debt
     return round(ev / shares, 2) if ev > 0 else None
 
 def fv_pe_mean(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     ipe = _g(row, "INDUSTRY_PE")
-    tpe = min(ipe, 25) if ipe and ipe > 5 else 20
+    tpe = min(ipe, 60) if ipe and ipe > 5 else 25     # ← raised cap to 60
     return round(eps * tpe, 2) if eps and eps > 0 else None
 
 def fv_pb(row):
@@ -954,7 +1019,7 @@ def fv_pb(row):
     if not (bv and roe and bv > 0 and roe > 0):
         return None
     coe = RISK_FREE + EQUITY_PREMIUM
-    pb  = min(max((roe / 100) / coe, 0.5), 10)
+    pb  = min(max((roe / 100) / coe, 0.5), 15)
     return round(bv * pb, 2)
 
 def fv_ddm(row):
@@ -1006,64 +1071,197 @@ FV_MODELS = [
 ]
 
 def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
+    import numpy as np
+    import pandas as pd
+    import itertools
+
     df = df.copy()
-    for col, fn, _ in FV_MODELS:
-        df[col] = df.apply(fn, axis=1)
 
-    def smart_composite(row):
+    # ── DROP OLD FV ─────────────────────────────
+    fv_cols = [c for c in df.columns if c.startswith("FV_") or "FAIR_VALUE" in c]
+    df = df.drop(columns=fv_cols, errors="ignore")
+
+    def g(row, *keys):
+        for k in keys:
+            if k in row and pd.notna(row[k]):
+                return row[k]
+        return None
+
+    # ── MODELS ─────────────────────────────
+
+    def fv_graham(row):
+        eps = g(row, "PL_EPS_BASIC", "EPS_TTM")
+        bv  = g(row, "BOOK_VALUE")
+        if eps and bv and eps > 0 and bv > 0:
+            return round((22.5 * eps * bv) ** 0.5, 2)
+        return None
+
+    def fv_lynch(row):
+        eps = g(row, "PL_EPS_BASIC", "EPS_TTM")
+        gth = g(row, "EPS_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT")
+        if eps and gth and eps > 0 and gth > 0:
+            gth = min(gth, 25)
+            return round(eps * gth, 2)
+        return None
+
+    def fv_pe(row):
+        eps = g(row, "PL_EPS_BASIC", "EPS_TTM")
+        pe  = g(row, "PE")
+        if eps and pe and eps > 0 and pe > 0:
+            return round(eps * pe, 2)
+        return None
+
+    def fv_pb(row):
+        bv = g(row, "BOOK_VALUE")
+        pb = g(row, "PB")
+        if bv and pb and bv > 0 and pb > 0:
+            return round(bv * pb, 2)
+        return None
+
+    def fv_ev_ebitda(row):
+        ev     = g(row, "EV_CR")
+        shares = g(row, "SHARES_CR")
+        if ev and shares and shares > 0:
+            return round(ev / shares, 2)
+        return None
+
+    def fv_dcf(row):
+        fcf    = g(row, "CF_FCF_CR", "CF_FCF_3YR_AVG_CR")
+        shares = g(row, "SHARES_CR")
+        growth = g(row, "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT")
+
+        if fcf and shares and shares > 0:
+            growth = min(max((growth or 10) / 100, 0.03), 0.20)
+            value = fcf * (1 + growth) / (WACC - TERMINAL_GROWTH)
+            return round(value / shares, 2)
+        return None
+
+    # ── APPLY MODELS ─────────────────────────────
+
+    df["FV_GRAHAM"] = df.apply(fv_graham, axis=1)
+    df["FV_PETER_LYNCH"] = df.apply(fv_lynch, axis=1)
+    df["FV_PE_MEAN_REV"] = df.apply(fv_pe, axis=1)
+    df["FV_PB"] = df.apply(fv_pb, axis=1)
+    df["FV_EV_EBITDA"] = df.apply(fv_ev_ebitda, axis=1)
+    df["FV_DCF"] = df.apply(fv_dcf, axis=1)
+
+    fv_list = [
+        "FV_GRAHAM",
+        "FV_PETER_LYNCH",
+        "FV_PE_MEAN_REV",
+        "FV_PB",
+        "FV_EV_EBITDA",
+        "FV_DCF"
+    ]
+
+    # ── COMPOSITE FV ─────────────────────────────
+
+    def compute_composite(row):
         values = []
-    
-        for col, _, _ in FV_MODELS:
-            v = _safe(row.get(col))
-    
-            # 🔥 keep only sane models
-            if v and v > 0:
-    
-                # reject extreme vs price
-                cmp = _safe(row.get("CMP"))
-                if cmp and v / cmp > 5:
+        for c in fv_list:
+            v = row.get(c)
+            if pd.notna(v):
+                try:
+                    v = float(v)
+                    if v > 0:   # 🔥 ignore negative + zero
+                        values.append(v)
+                except:
                     continue
-    
-                values.append(v)
-    
-        if len(values) < 3:
+
+        values = sorted(values)
+
+        if len(values) >= 3 and values[0] / values[-1] < 0.1:
+            values = values[1:]   # drop worst model
+        if len(values) < 2:
             return None
-    
-        # 🔥 your disagreement filter (perfect)
-        if min(values) / max(values) < 0.1:
+
+        # Disagreement filter
+        if min(values) / max(values) < 0.049999999:
             return None
-    
-        if len(values) <= 5:
-            return round(np.mean(values), 2)
-    
+
+            # Earnings stability
+            pat_vals = [
+                row.get("A_PL_PAT_CR_MAR2025"),
+                row.get("A_PL_PAT_CR_MAR2024"),
+                row.get("A_PL_PAT_CR_MAR2023"),
+                row.get("A_PL_PAT_CR_MAR2022"),
+                row.get("A_PL_PAT_CR_MAR2021"),
+                row.get("A_PL_PAT_CR_MAR2020"),
+            ]
+            try:
+                pat_vals = [p for p in pat_vals if pd.notna(p)]
+                neg_ratio = sum(1 for p in pat_vals if p <= 0) / len(pat_vals)
+            except:
+                return None
+
+        if neg_ratio > 0.5:
+            return None
+
+        # FCF sanity
+        #fcf = row.get("CF_FCF_CR")
+        #if fcf is not None and fcf <= 0:
+            #return None
+
+        # Lowest std dev subset
+        best_subset = None
         best_std = float("inf")
-        best_avg = None
-    
-        for combo in itertools.combinations(values, 3):
-            std = np.std(combo)
-            if std < best_std:
-                best_std = std
-                best_avg = np.mean(combo)
-    
-        return round(best_avg, 2) if best_avg else None
 
-    df["COMPOSITE_FAIR_VALUE"] = df.apply(smart_composite, axis=1)
-    cmp = df.apply(lambda r: _safe(r.get("CMP")), axis=1)
-    cfv = df["COMPOSITE_FAIR_VALUE"]
-    df["UPSIDE_PCT"]           = ((cfv - cmp) / cmp * 100).round(1).where(cmp.notna() & cfv.notna())
-    df["MARGIN_OF_SAFETY_PCT"] = ((cfv - cmp) / cfv * 100).round(1).where(cfv.notna() & (cfv > 0))
+        for r in range(2, len(values)+1):
+            for comb in itertools.combinations(values, r):
+                std = np.std(comb)
+                if std < best_std:
+                    best_std = std
+                    best_subset = comb
 
+        if not best_subset:
+            return None
+
+        return round(np.mean(best_subset), 2)
+
+    df["COMPOSITE_FAIR_VALUE"] = df.apply(compute_composite, axis=1)
+
+    # ── FV COUNT (valid models only) ─────────────────────────────
+    df["FV_COUNT"] = df.apply(
+        lambda row: sum(
+            1 for c in fv_list
+            if pd.notna(row[c]) and row[c] > 0
+        ),
+        axis=1
+    )
+
+    # ── MOS ─────────────────────────────
+    cmp = df.get("CMP")
+    df["UPSIDE_PCT"] = ((df["COMPOSITE_FAIR_VALUE"] - cmp) / cmp * 100).round(2)
+    df["MARGIN_OF_SAFETY_PCT"] = df["UPSIDE_PCT"]
+
+    # ── FV GRADE (simple, as you wanted) ─────────────────────────────
     def fv_grade(v):
-        if v is None or (isinstance(v, float) and v != v): return "N/A"
-        try: v = float(v)
-        except: return "N/A"
-        if v >= 40:  return "DEEP VALUE"
-        if v >= 25:  return "UNDERVALUED"
-        if v >= 10:  return "FAIR"
-        if v >= -10: return "FULLY PRICED"
-        return "OVERVALUED"
+        if pd.isna(v):
+            return "UNDETERMINED"
+
+        try:
+            v = float(v)
+        except:
+            return "UNDETERMINED"
+
+        if v == 0:
+            return "UNDETERMINED"
+
+        v = max(min(v, 200), -100)
+
+        if v >= 40:
+            return "DEEP VALUE"
+        elif v >= 25:
+            return "UNDERVALUED"
+        elif v >= 10:
+            return "FAIR"
+        elif v >= -10:
+            return "FULLY PRICED"
+        else:
+            return "OVERVALUED"
 
     df["FV_GRADE"] = df["MARGIN_OF_SAFETY_PCT"].apply(fv_grade)
+
     return df
 
 
@@ -1164,7 +1362,7 @@ def piotroski_score(row):
     return score
 
 
-def compute_final_score(df):
+def compute_final_score(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     def get_col(name):
@@ -1200,7 +1398,6 @@ def compute_final_score(df):
         growth * 0.10 +
         safety * 0.10 +
         df["F_SCORE"] * 2 +
-
         df.apply(cyclical_penalty, axis=1) +
         df.apply(earnings_volatility, axis=1) +
         df.apply(fcf_consistency, axis=1) +
@@ -1208,16 +1405,13 @@ def compute_final_score(df):
         df.apply(missing_data_penalty, axis=1)
     ).round(2)
 
-    # ❗ FILTER BAD DATA (VERY IMPORTANT)
-    df = df[
-        df["COMPOSITE_FAIR_VALUE"].notna() &
-        df["ROE_PCT"].notna() &
-        df["PE"].notna()
-    ]
+    df["DATA_QUALITY"] = "GOOD"
+    df.loc[df["COMPOSITE_FAIR_VALUE"].isna(), "DATA_QUALITY"] = "NO_VALID_MODELS"
 
     df["FINAL_RANK"] = df["FINAL_SCORE"].rank(ascending=False, method="min").astype(int)
 
     def grade(s):
+        if pd.isna(s): return "F"
         if s >= 80: return "A"
         if s >= 65: return "B"
         if s >= 50: return "C"
@@ -1227,6 +1421,7 @@ def compute_final_score(df):
     df["GRADE"] = df["FINAL_SCORE"].apply(grade)
 
     return df
+    
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1298,7 +1493,7 @@ def main():
         if age is not None and age < REFRESH_DAYS:
             log.info(f"  CSV is {age} days old (< {REFRESH_DAYS} days) — skipping download")
             log.info(f"  Set REFRESH_DAYS lower or use --force-refresh to re-download")
-            do_download = False
+            do_download = True
         elif age is not None:
             log.info(f"  CSV is {age} days old (≥ {REFRESH_DAYS} days) — refreshing stale data")
 
@@ -1333,15 +1528,19 @@ def main():
     # ── Score & analyse ───────────────────────────────────────────────────────
     log.info("Computing valuation scores …")
     df = compute_scores(master)
+    
+    
 
     log.info("Computing fair value models …")
     df = compute_fair_values(df)
-
+    
+    
     log.info("Computing final composite score …")
     df = compute_final_score(df)
 
     df.to_csv(out, index=False)
     log.info(f"  ✓ Scored CSV → {out}  ({len(df)} rows × {len(df.columns)} cols)")
+    print(df.loc[df["SYMBOL"]=="INDIAMART", ["COMPOSITE_FAIR_VALUE","FV_GRAHAM","FV_DCF"]])
 
     print_summary(df, n=args.top)
     log.info("Done! 🎯")
