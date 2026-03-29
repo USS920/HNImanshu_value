@@ -15,7 +15,10 @@ Score Architecture:
 
 F_SCORE from CSV is retained as a reference column only.
 
-Obfuscate the final HTML.
+News:
+  Reads multi_stock_news.csv (columns: stockname, datetime, news, link)
+  and injects per-symbol news into the HTML as NEWS_DATA JS object.
+  Headlines are hyperlinked to their source URLs.
 """
 
 import pandas as pd
@@ -24,8 +27,6 @@ import json
 import sys
 import re
 import argparse
-import base64
-import zlib
 from pathlib import Path
 from datetime import datetime
 import zoneinfo
@@ -41,8 +42,10 @@ OUTPUT      = BASE / "public" / "index.html"
 N500_CSV    = BASE / "nifty500_valuation.csv"
 SC250_CSV   = BASE / "niftysmallcap500_valuation.csv"
 MC250_CSV   = BASE / "niftymicrocap250_valuation.csv"
+NEWS_CSV    = BASE / "multi_stock_news.csv"
 
-PLACEHOLDER = "%%DATASETS_PLACEHOLDER%%"
+PLACEHOLDER      = "%%DATASETS_PLACEHOLDER%%"
+NEWS_PLACEHOLDER = "// ── NEWS DATA ──\nvar NEWS_DATA = {\n  '__default__': []\n};"
 
 N500_NAME_COL  = "COMPANY_NAME_x"
 SC250_NAME_COL = "COMPANY_NAME"
@@ -62,10 +65,10 @@ KEY_COLS = [
     "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT",
     "SH_PROMOTER_PCT_LATEST", "NET_DEBT_CR", "INTEREST_COVERAGE",
     "CF_OPERATING_CR", "NET_DEBT_TO_EBITDA",
-    "F_SCORE",
-    "PIOTROSKI_SCORE",
-    "QUALITY_SCORE",
-    "COMBINED_SCORE",
+    "F_SCORE",           # 0–9    · CSV pre-computed Piotroski (reference only)
+    "PIOTROSKI_SCORE",   # 0–9    · Fresh YoY-based F-Score (primary)
+    "QUALITY_SCORE",     # 0–13.4 · Absolute-level quality addon
+    "COMBINED_SCORE",    # 0–22.4 · PIOTROSKI + QUALITY
     "LOW_PROMOTER_FLAG",
 ]
 
@@ -74,6 +77,12 @@ KEY_COLS = [
 # =========================
 
 def score_metric(value, thresholds, reverse=False, max_pts=1.4):
+    """
+    4-tier linear scoring engine.
+    thresholds: [t1, t2, t3, t4] always in ASCENDING order.
+    Normal  (reverse=False): higher = better.
+    Reverse (reverse=True):  lower  = better.
+    """
     if pd.isna(value):
         return 0
     pts = [1.1, 1.2, 1.3, max_pts]
@@ -96,8 +105,12 @@ def score_metric(value, thresholds, reverse=False, max_pts=1.4):
 # =========================
 
 def _resolve_prior_cols(df: pd.DataFrame) -> dict:
+    """
+    Dynamically find the two most recent annual columns for each
+    Piotroski base metric. Supports MAR/DEC/SEP/JUN fiscal years.
+    """
     def _annual_cols(prefix):
-        pat = re.compile(rf"^{re.escape(prefix)}_(MAR|DEC|SEP|JUN)(\\d{{4}})$")
+        pat = re.compile(rf"^{re.escape(prefix)}_(MAR|DEC|SEP|JUN)(\d{{4}})$")
         hits = []
         for c in df.columns:
             m = pat.match(c)
@@ -137,6 +150,13 @@ def _resolve_prior_cols(df: pd.DataFrame) -> dict:
 # =========================
 
 def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
+    """
+    Genuine 9-point Piotroski F-Score from raw CSV columns.
+
+    Profitability:  F1 ROA>0  F2 CFO>0  F3 ΔROA>0  F4 CFO>Net Income
+    Leverage:       F5 Leverage↓  F6 Equity ratio↑  F7 No dilution
+    Efficiency:     F8 Gross margin↑  F9 Asset turnover↑
+    """
     def s(col):
         if col in df.columns:
             return pd.to_numeric(df[col], errors="coerce")
@@ -147,8 +167,7 @@ def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
 
     pat_c = s("PL_PAT_CR")
     ta_c  = nz(s("BS_TOTAL_ASSETS_CR"))
-    cfo_c = s("CF_OPERATING_CR") #change for piotrosky.
-    #cfo_c = s("CF_OPERATING_CR") - s("PL_OTHER_INCOME_CR")
+    cfo_c = s("CF_OPERATING_CR")
     opm_c = s("PL_OPM_PCT")
     rev_c = s("PL_REVENUE_CR")
     int_c = s("PL_INTEREST_CR")
@@ -198,6 +217,10 @@ def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
 # =========================
 
 def calc_quality_score(df: pd.DataFrame) -> pd.Series:
+    """
+    9-factor absolute-level quality score with YoY direction bonuses/penalties.
+    Max theoretical ≈ 13.4
+    """
     def calc_row(x):
         score = 0.0
 
@@ -242,6 +265,18 @@ def calc_quality_score(df: pd.DataFrame) -> pd.Series:
 # =========================
 
 def calc_final_score(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    MASTER = (VAL_NORM × 0.40) + (PIOT_NORM × 0.35) + (QUAL_NORM × 0.25)
+
+    VAL_NORM   — MOS% normalised: -50 → 0,  +100 → 10
+    PIOT_NORM  — Piotroski 0–9  → 0–10
+    QUAL_NORM  — Quality 0–13.4 → 0–10
+
+    FINAL_SCORE: 0–10   FINAL_RANK: 1 = best
+
+    Grades (0–10 scale):
+      A ≥7.5  B+ ≥6.5  B ≥5.5  C ≥4.0  D ≥2.5  E <2.5
+    """
     df = df.copy()
 
     mos = pd.to_numeric(
@@ -279,6 +314,117 @@ def calc_final_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =========================
+# 📰 NEWS LOADER
+# =========================
+
+def _extract_source(url: str) -> str:
+    """Extract a short source name from a Google News or direct URL."""
+    try:
+        # Try to get the source from URL parameters or domain
+        import urllib.parse
+        parsed = urllib.parse.urlparse(url)
+        # Google News RSS URLs encode the source in the path/params
+        # Fall back to the netloc, strip www.
+        host = parsed.netloc.replace("www.", "")
+        if host == "news.google.com":
+            return "Google News"
+        return host.split(".")[0].capitalize()
+    except Exception:
+        return ""
+
+
+def load_news(path: Path) -> dict:
+    """
+    Load multi_stock_news.csv and return a dict:
+      { "SYMBOL": [ {headline, time, link, source}, ... ], ... }
+
+    CSV columns expected: stockname, datetime, news, link
+    News items are sorted newest-first per symbol.
+    """
+    if not path.exists():
+        print(f"  [NEWS]  {path.name} not found — skipping news injection")
+        return {}
+
+    print(f"  [NEWS]  {path.name}")
+    try:
+        df = pd.read_csv(path, low_memory=False)
+    except Exception as e:
+        print(f"    ERROR reading news CSV: {e}")
+        return {}
+
+    # Normalise column names (strip whitespace, lowercase check)
+    df.columns = [c.strip() for c in df.columns]
+    required = {"stockname", "datetime", "news", "link"}
+    missing = required - set(df.columns)
+    if missing:
+        print(f"    ERROR: missing columns in news CSV: {missing}")
+        return {}
+
+    news_map = {}
+    for _, row in df.iterrows():
+        sym = str(row["stockname"]).strip().upper()
+        if not sym:
+            continue
+
+        headline = str(row["news"]).strip()
+        link     = str(row["link"]).strip()
+        dt_raw   = str(row["datetime"]).strip()
+        source   = _extract_source(link)
+
+        # Format datetime nicely: "28 Mar 2026, 10:02 IST"
+        time_str = dt_raw
+        try:
+            # Try parsing "2026-03-28 10:02 IST" style
+            dt_clean = dt_raw.replace(" IST", "").strip()
+            dt_obj   = datetime.strptime(dt_clean, "%Y-%m-%d %H:%M")
+            time_str = dt_obj.strftime("%-d %b %Y, %I:%M %p")
+        except Exception:
+            pass  # keep raw string if parse fails
+
+        item = {
+            "headline": headline,
+            "time":     time_str,
+            "link":     link,
+            "source":   source,
+        }
+        news_map.setdefault(sym, []).append(item)
+
+    # Sort each symbol's news newest-first (preserving original CSV order if parse fails)
+    for sym in news_map:
+        try:
+            news_map[sym].sort(
+                key=lambda x: datetime.strptime(
+                    df.loc[df["news"] == x["headline"], "datetime"]
+                    .iloc[0].replace(" IST", "").strip(),
+                    "%Y-%m-%d %H:%M"
+                ),
+                reverse=True
+            )
+        except Exception:
+            pass  # original order is fine
+
+    total_items = sum(len(v) for v in news_map.values())
+    print(f"    Loaded: {total_items} news items across {len(news_map)} symbols")
+    return news_map
+
+
+def build_news_js(news_map: dict) -> str:
+    """
+    Render the NEWS_DATA JS block.
+    Headlines are stored with their link so the template renders them as <a> tags.
+    """
+    if not news_map:
+        return "// ── NEWS DATA ──\nvar NEWS_DATA = {\n  '__default__': []\n};"
+
+    lines = ["// ── NEWS DATA ──", "var NEWS_DATA = {", "  '__default__': []"]
+    for sym, items in sorted(news_map.items()):
+        safe_items = json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+        lines.append(f",{json.dumps(sym)}:{safe_items}")
+    lines.append("};")
+    return "\n".join(lines)
+
+
+# =========================
 # 📂 CSV LOADER
 # =========================
 
@@ -303,16 +449,15 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
 
     df = df.copy()
 
+    # NET_DEBT_TO_EBITDA
     if "NET_DEBT_CR" in df.columns and "PL_EBITDA_CR" in df.columns:
-        ebitda = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce")
-        oi     = pd.to_numeric(df.get("PL_OTHER_INCOME_CR"), errors="coerce")
-        
-        core_ebitda = ebitda - oi
-        
-        df["NET_DEBT_TO_EBITDA"] = net_debt / core_ebitda.replace(0, np.nan)
+        ebitda   = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce").replace(0, np.nan)
+        net_debt = pd.to_numeric(df["NET_DEBT_CR"],  errors="coerce")
+        df["NET_DEBT_TO_EBITDA"] = net_debt / ebitda
     else:
         df["NET_DEBT_TO_EBITDA"] = np.nan
 
+    # Promoter flag
     if "SH_PROMOTER_PCT_LATEST" in df.columns:
         df["LOW_PROMOTER_FLAG"] = (
             pd.to_numeric(df["SH_PROMOTER_PCT_LATEST"], errors="coerce") < 25
@@ -320,11 +465,13 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     else:
         df["LOW_PROMOTER_FLAG"] = False
 
+    # ── Compute all scores ───────────────────────────────────────────────
     df["PIOTROSKI_SCORE"] = calc_piotroski_fscore(df)
     df["QUALITY_SCORE"]   = calc_quality_score(df)
     df["COMBINED_SCORE"]  = (df["PIOTROSKI_SCORE"] + df["QUALITY_SCORE"]).round(2)
     df = calc_final_score(df)
 
+    # Debug stats
     for col in ["PIOTROSKI_SCORE", "QUALITY_SCORE", "COMBINED_SCORE", "FINAL_SCORE"]:
         s = df[col].dropna()
         print(f"    {col:20s}  min={s.min():.2f}  max={s.max():.2f}  avg={s.mean():.2f}")
@@ -332,6 +479,7 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     top5 = df.nsmallest(5, "FINAL_RANK")[["COMPANY_NAME", "FINAL_RANK", "FINAL_SCORE", "GRADE"]]
     print(f"    Top 5:\n{top5.to_string(index=False)}")
 
+    # Trim to output columns
     needed = ["COMPANY_NAME"] + KEY_COLS
     df = df[[c for c in needed if c in df.columns]]
 
@@ -345,63 +493,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
             )
 
     return df.to_dict(orient="records")
-
-
-# =========================
-# 🔐 HTML OBFUSCATOR
-# =========================
-
-def obfuscate_html(html: str) -> str:
-    """
-    Compresses and Base64-encodes the entire HTML payload, then wraps it
-    in a minimal self-decoding bootstrap page.
-
-    The browser receives only the bootstrap; the real HTML is stored as
-    a Base64 string and reconstructed at runtime via JavaScript.
-    No readable HTML structure, class names, data, or JS logic is
-    visible in the saved file.
-    """
-    compressed   = zlib.compress(html.encode("utf-8"), level=9)
-    b64_payload  = base64.b64encode(compressed).decode("ascii")
-
-    # Chunk the payload so no single line is meaningful
-    chunk_size = 120
-    chunks = [b64_payload[i:i+chunk_size]
-              for i in range(0, len(b64_payload), chunk_size)]
-    js_array = "[\n" + ",\n".join(f'"{c}"' for c in chunks) + "\n]"
-
-    bootstrap = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<script>
-(function(){{
-var _p={js_array};
-var _b=_p.join("");
-// base64 → Uint8Array
-function _d(s){{
-  var b=atob(s),u=new Uint8Array(b.length);
-  for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
-  return u;
-}}
-// inflate via DecompressionStream (Chrome 80+, Firefox 113+, Safari 16.4+)
-async function _r(){{
-  var ds=new DecompressionStream("deflate");
-  var w=ds.writable.getWriter();
-  w.write(_d(_b));
-  w.close();
-  var out=[],rd=ds.readable.getReader();
-  while(true){{var{{done,value}}=await rd.read();if(done)break;out.push(value);}}
-  var total=out.reduce((a,v)=>a+v.length,0);
-  var buf=new Uint8Array(total);
-  var off=0;
-  out.forEach(function(v){{buf.set(v,off);off+=v.length;}});
-  var html=new TextDecoder().decode(buf);
-  document.open();document.write(html);document.close();
-}}
-_r();
-}})();
-</script>
-</head><body></body></html>"""
-
-    return bootstrap
 
 
 # =========================
@@ -430,6 +521,11 @@ def build(deploy=False):
     if data_mc250 is None:
         data_mc250 = []
 
+    print("\nLoading News...\n")
+    news_map = load_news(NEWS_CSV)
+    news_js  = build_news_js(news_map)
+
+    # ── Build DATASETS JS ──
     datasets_js = (
         "const DATASETS = {\n"
         f"n500:{json.dumps(data_n500, separators=(',', ':'))},\n"
@@ -438,18 +534,31 @@ def build(deploy=False):
         "};"
     )
 
+    # ── Inject DATASETS ──
     html = template.replace(PLACEHOLDER, datasets_js)
+
+    # ── Inject NEWS_DATA (replace the static placeholder block) ──
+    html = html.replace(NEWS_PLACEHOLDER, news_js)
+
+    # If placeholder wasn't found (template variation), try simpler replacement
+    if news_js not in html and "var NEWS_DATA" in html:
+        # Replace whatever NEWS_DATA block exists using regex
+        html = re.sub(
+            r"// ── NEWS DATA ──\s*\nvar NEWS_DATA\s*=\s*\{[^;]*\};",
+            news_js,
+            html,
+            flags=re.DOTALL
+        )
+
+    # ── Timestamp ──
     now = datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y\n%I:%M %p IST")
     html = html.replace("%%LAST_UPDATED_PLACEHOLDER%%", now)
-
-    # ── Obfuscate before writing ─────────────────────────────────────────
-    html = obfuscate_html(html)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(html, encoding="utf-8")
 
     total = len(data_n500 or []) + len(data_sc250) + len(data_mc250)
-    print(f"\n✅ Build Complete  —  {total} total stocks")
+    print(f"\n✅ Build Complete  —  {total} total stocks, {sum(len(v) for v in news_map.values())} news items")
     print(f"   Output: {OUTPUT}")
 
     if deploy:
