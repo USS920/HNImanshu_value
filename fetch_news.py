@@ -14,7 +14,7 @@ from gnews import GNews
 # ══════════════════════════════════════════════
 
 IST          = timezone(timedelta(hours=5, minutes=30))
-TASK_TIMEOUT = 10       # 10s per task
+TASK_TIMEOUT = 10
 BATCH_SIZE   = 10
 NEWS_DAYS    = 7
 
@@ -35,6 +35,7 @@ KEYWORDS = [
 
 # ══════════════════════════════════════════════
 # Download index CSVs and build stocks list
+# Uses full official names from CSV (e.g., "ITC Ltd.")
 # ══════════════════════════════════════════════
 
 def fetch_index_csvs():
@@ -57,8 +58,10 @@ def fetch_index_csvs():
             cols = df.columns.str.strip()
             sym_col  = next((c for c in cols if "Symbol" in c or "symbol" in c), None)
             name_col = next((c for c in cols if "Company Name" in c or "name" in c), None)
+
             if not sym_col or not name_col:
                 sym_col, name_col = cols[0], cols[1]
+
             df = df[[sym_col, name_col]]
             df = df.rename(columns={sym_col: "symbol", name_col: "name"})
             df = df[["symbol", "name"]].dropna()
@@ -79,6 +82,8 @@ def fetch_index_csvs():
         .reset_index(drop=True)
     )
     unique_stocks.to_csv("stocks_nse_indices.csv", index=False, encoding="utf-8-sig")
+
+    # Each tuple is (symbol, full_official_name)
     stocks = [(row["symbol"], row["name"]) for _, row in unique_stocks.iterrows()]
     print(f"  → Unique stocks from 3 indices: {len(stocks)}")
     return stocks
@@ -86,13 +91,17 @@ def fetch_index_csvs():
 
 # ══════════════════════════════════════════════
 # GOOGLE NEWS per stock
+# Only keep headlines that contain:
+#   - symbol, or
+#   - full name, or
+#   - first two words of full name
+# Saves original full headline in `news` column anyway
 # ══════════════════════════════════════════════
 
 def google_news_for_stock(symbol, name, days=7):
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     articles = None
 
-    # 2 attempts with short HTTP timeout
     for attempt in range(2):
         try:
             g        = GNews(
@@ -101,13 +110,11 @@ def google_news_for_stock(symbol, name, days=7):
                 period=f"{days}d",
                 max_results=100,
             )
-            # If you can’t set timeout in GNews, use a patched session
             if hasattr(g, "session"):
                 g.session = requests.Session()
                 g.session.headers.update(g.headers)
                 g.session.mount("http://", requests.adapters.HTTPAdapter(max_retries=0))
                 g.session.mount("https://", requests.adapters.HTTPAdapter(max_retries=0))
-
             articles = g.get_news(name)
             break
         except Exception as e:
@@ -119,6 +126,17 @@ def google_news_for_stock(symbol, name, days=7):
         return pd.DataFrame()
 
     rows = []
+    name_low  = name.lower().strip()
+    sym_low   = symbol.lower()
+    name_words = name_low.split()
+    first_two = " ".join(name_words[:2]) if len(name_words) >= 2 else name_low
+
+    key_phrases = [
+        sym_low,              # e.g., "aether"
+        name_low,             # e.g., "aether industries limited"
+        first_two,            # e.g., "aether industries"
+    ]
+
     for a in articles:
         try:
             dt = parsedate_to_datetime(a.get("published date",""))
@@ -126,6 +144,12 @@ def google_news_for_stock(symbol, name, days=7):
             continue
         if dt < cutoff:
             continue
+        tit = str(a.get("title","")).lower()
+
+        # Only keep if title contains symbol OR full name OR first two words of name
+        if not any(phrase in tit for phrase in key_phrases):
+            continue
+
         ist = dt.astimezone(IST)
         rows.append({
             "stockname":  symbol,
@@ -136,7 +160,7 @@ def google_news_for_stock(symbol, name, days=7):
         })
 
     if not rows:
-        print(f"  ⚠  {symbol}: no valid datetime news")
+        print(f"  ⚠  {symbol}: no relevant datetime news")
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
@@ -149,11 +173,12 @@ def google_news_for_stock(symbol, name, days=7):
 
 # ══════════════════════════════════════════════
 # MAIN
+# Each batch writes to CSV; old files are removed first.
 # ══════════════════════════════════════════════
 
 def main():
     news_days = NEWS_DAYS
-    outfile = "multi_stock_news.csv"
+    outfile   = "multi_stock_news.csv"
 
     # Remove old files before starting
     if os.path.exists("stocks_nse_indices.csv"):
@@ -163,9 +188,10 @@ def main():
 
     print("\n" + "="*88)
     print("  STEP 1: Download NSE index lists and build unique stock list")
+    print("  Each row: (symbol, full official company name) → sent to gnews")
     print("="*88)
     stocks = fetch_index_csvs()
-    print(f"    → Unique stocks written to stocks_nse_indices.csv\n")
+    print(f"    → stock pairs written to stocks_nse_indices.csv\n")
 
     batches = []
     for i in range(0, len(stocks), BATCH_SIZE):
@@ -174,7 +200,7 @@ def main():
 
     print("="*88)
     print(f"  STEP 2: Fetch Google News — {BATCH_SIZE} stocks per batch")
-    print(f"  News window: last {news_days} days (default, no CLI arg)")
+    print(f"  News window: last {news_days} days (default)")
     print("="*88)
 
     t0 = time.time()
@@ -193,7 +219,6 @@ def main():
             batch_frames = []
 
             try:
-                # Let batch run up to TASK_TIMEOUT + 10s total
                 for future in as_completed(futures, timeout=TASK_TIMEOUT + 10):
                     symbol = futures[future]
                     try:
@@ -206,7 +231,6 @@ def main():
                     except Exception as e:
                         print(f"  ✗  {symbol}: {e}")
             except FutTimeoutError:
-                # some tasks didn’t finish; still use what we got
                 print(f"  ⚠  Batch {i_batch+1}: some tasks timed out; using only completed tasks.")
 
         if not batch_frames:
@@ -239,6 +263,15 @@ def main():
     print(f"  ✓ Stocks read: {len(stocks)} (from 3 indices)")
     print(f"  ✓ CSV saved (each batch appended) → {outfile}")
     print(f"  ✓ Columns: stockname,datetime,news,link")
+    print("  ✓ Each gnews call used: google_news_for_stock(symbol, full_official_name, 7)\n")
+    print("Example (from your CSV):")
+    print("  ICICIAMC,ICICI Prudential Asset Management Company Ltd.")
+    print("  ICICIPRULI,ICICI Prudential Life Insurance Company Ltd.")
+    print("  IDBI,IDBI Bank Ltd.")
+    print("  IDFCFIRSTB,IDFC First Bank Ltd.")
+    print("  ITC,ITC Ltd.")
+    print("  ITCHOTELS,ITC Hotels Ltd.")
+    print("  AETHER,Aether Industries Limited")
     print("="*88 + "\n")
 
 
