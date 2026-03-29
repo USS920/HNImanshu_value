@@ -43,15 +43,14 @@ REQUEST_DELAY  = 1.5     # seconds between Screener.in requests
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Network constants ─────────────────────────────────────────────────────────
-INDEX = "nifty500"     #Keep this line as i need both
-NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
-
 INDEX = "niftymicrocap250"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
 
+INDEX = "nifty500"     #Keep this line as i need both
+NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
+
 INDEX = "niftysmallcap500"
 NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
-
 
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
@@ -1013,23 +1012,32 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
     def smart_composite(row):
         values = []
     
-        # collect valid FV values
         for col, _, _ in FV_MODELS:
             v = _safe(row.get(col))
+    
+            # 🔥 keep only sane models
             if v and v > 0:
+    
+                # reject extreme vs price
+                cmp = _safe(row.get("CMP"))
+                if cmp and v / cmp > 5:
+                    continue
+    
                 values.append(v)
     
         if len(values) < 3:
             return None
     
-        # if <=5 values → simple mean
+        # 🔥 your disagreement filter (perfect)
+        if min(values) / max(values) < 0.1:
+            return None
+    
         if len(values) <= 5:
             return round(np.mean(values), 2)
     
         best_std = float("inf")
         best_avg = None
     
-        # try all combinations of 5
         for combo in itertools.combinations(values, 3):
             std = np.std(combo)
             if std < best_std:
