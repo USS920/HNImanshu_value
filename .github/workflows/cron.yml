@@ -31,7 +31,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="Website updation started...%0A%0AIt will take approximately 45 minutes.."
+          -d text="Website updation started...%0A%0AIt will take approximately 1 hour/ including downloading all the news.."
 
       - name: Run scripts
         continue-on-error: true
