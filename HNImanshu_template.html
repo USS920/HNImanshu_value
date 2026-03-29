@@ -441,6 +441,9 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .dm { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
 .dm-l { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
 .dm-v { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+/* Last metric spans full row so no empty ghost cells appear */
+.dm:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
+.dm:last-child:nth-child(3n+2) { grid-column: span 2; }
 
 /* ── CHANGE 2: screener-btn on desktop sits inline with header, hidden on mobile ── */
 .screener-btn {
@@ -637,7 +640,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
   /* Mobile: stack layout, 3-wide pills, hide desktop news box and screener link */
   #detail-panel .dp-body { flex-direction: column; gap: 10px; }
-  #detail-panel .dp-right { width: 100%; }
+  #detail-panel .dp-left { width: 100% !important; flex: none !important; min-width: 0; }
+  #detail-panel .dp-right { display: none !important; width: 0 !important; flex: none !important; padding: 0 !important; }
   #detail-panel .dp-news-box { display: none; }
   #detail-panel .dp-metrics { grid-template-columns: repeat(3, 1fr) !important; }
   #detail-panel .dp-header { margin-bottom: 10px; }
