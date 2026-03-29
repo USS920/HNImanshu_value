@@ -518,8 +518,7 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         pd_ = _safe(r.get("PAYABLE_DAYS"))
         if dd is not None and id_ is not None and pd_ is not None and not r.get("CASH_CONVERSION_CYCLE"):
             r["CASH_CONVERSION_CYCLE"] = round(dd + id_ - pd_, 1)
-
-                mc  = _safe(r.get("MARKET_CAP_CR"))
+            mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
 
         # ── Derive SHARES_CR from Market Cap ÷ CMP ──────────────────────
