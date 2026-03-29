@@ -1,12 +1,10 @@
 name: Daily Build & Deploy
 # keep-alive
-
 permissions:
   contents: write
 
 on:
   schedule:
-    #- cron: "0 12,14,16,18,20,22,0 * * *"
     - cron: "0 0 * * *"
   workflow_dispatch:
 
@@ -26,10 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install requests pandas numpy beautifulsoup4 lxml tqdm
+          pip install requests pandas numpy beautifulsoup4 lxml tqdm gnews
 
-      # 🔥 Run scripts but DON'T stop workflow on error
-      # 📩 Telegram Alert (ALWAYS RUNS)
       - name: Send Telegram Alert Before
         if: always()
         run: |
@@ -40,7 +36,6 @@ jobs:
       - name: Run scripts
         continue-on-error: true
         run: |
-
           echo "Running fetch_news.py..."
           python fetch_news.py || echo "fetch_news failed"
           
@@ -51,12 +46,12 @@ jobs:
           python nm250.py || echo "nm250 failed"
 
           echo "Running ns500.py..."
-          python ns500.py || echo "nm250 failed"
+          python ns500.py || echo "ns500 failed"
 
           echo "Running build.py..."
           python build.py || echo "build failed"
 
-      # ✅ FIXED COMMIT STEP
+      # ✅ SAVE ALL CSV FILES TO MAIN BRANCH
       - name: Commit and push CSV + HTML
         continue-on-error: true
         run: |
@@ -68,10 +63,10 @@ jobs:
           git pull origin main || echo "pull failed"
           git stash pop || echo "nothing to pop"
 
+          # SAVE THESE EXACT FILES TO MAIN BRANCH
           git add nifty500_valuation.csv niftymicrocap250_valuation.csv NiftySmallcap500_valuation.csv multi_stock_news.csv public/index.html
 
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
-
           git push origin main || echo "push failed"
 
       - name: Setup Firebase credentials
@@ -81,7 +76,6 @@ jobs:
       - name: Install Firebase
         run: npm install -g firebase-tools
 
-      # 🔥 Deploy even if previous steps failed
       - name: Deploy
         continue-on-error: true
         env:
@@ -89,10 +83,9 @@ jobs:
         run: |
           firebase deploy --project hnimanshu --non-interactive || echo "deploy failed"
 
-      # 📩 Telegram Alert (ALWAYS RUNS)
       - name: Send Telegram Alert
         if: always()
         run: |
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="https://hnimanshu-value.web.app/ %0A%0AUpdated from Action - [Daily Build And Deploy] %0A%0AFrom https://github.com/USS920/HNImanshu_value/actions%0A%0AEdit here: https://github.com/USS920/HNImanshu_value/blob/main/.github/workflows/cron.yml"
+          -d text="https://hnimanshu-value.web.app/ %0A%0AUpdated from Action - [Daily Build And Deploy] %0A%0AEdit here: https://github.com/USS920/HNImanshu_value/blob/main/.github/workflows/cron.yml"
