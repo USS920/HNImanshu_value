@@ -64,7 +64,7 @@ jobs:
           git stash pop || echo "nothing to pop"
 
           # SAVE THESE EXACT FILES TO MAIN BRANCH
-          git add nifty500_valuation.csv niftymicrocap250_valuation.csv NiftySmallcap500_valuation.csv multi_stock_news.csv public/index.html
+          git add nifty500_valuation.csv niftymicrocap250_valuation.csv niftysmallcap500_valuation.csv multi_stock_news.csv public/index.html
 
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
           git push origin main || echo "push failed"
