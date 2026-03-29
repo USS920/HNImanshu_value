@@ -48,8 +48,13 @@ NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_li
 
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import os
+
 try:
-    if dt.now().hour <= 15:
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    if ist_time.hour <= 15:
         os.remove(OUTPUT_FILE)
 except:
     pass
