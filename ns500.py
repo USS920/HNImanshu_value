@@ -55,7 +55,7 @@ NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.
 
 OUTPUT_FILE    = f"{INDEX}_valuation.csv"
 try:
-    if dt.now().hour == 15:
+    if dt.now().hour != 16:
         os.remove(OUTPUT_FILE)
 except:
     pass
