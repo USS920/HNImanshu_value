@@ -43,13 +43,11 @@ REQUEST_DELAY  = 1.5     # seconds between Screener.in requests
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Network constants ─────────────────────────────────────────────────────────
-
-
 INDEX = "nifty500"     #Keep this line as i need both
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
 
 INDEX = "niftysmallcap500"
-NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
+NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
 
 INDEX = "niftymicrocap250"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
@@ -1011,15 +1009,35 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
     for col, fn, _ in FV_MODELS:
         df[col] = df.apply(fn, axis=1)
 
-    def composite(row):
-        tw, ws = 0.0, 0.0
-        for col, _, w in FV_MODELS:
+    def smart_composite(row):
+        values = []
+    
+        # collect valid FV values
+        for col, _, _ in FV_MODELS:
             v = _safe(row.get(col))
             if v and v > 0:
-                ws += v * w; tw += w
-        return round(ws / tw, 2) if tw > 0 else None
+                values.append(v)
+    
+        if len(values) < 3:
+            return None
+    
+        # if <=5 values → simple mean
+        if len(values) <= 5:
+            return round(np.mean(values), 2)
+    
+        best_std = float("inf")
+        best_avg = None
+    
+        # try all combinations of 5
+        for combo in itertools.combinations(values, 3):
+            std = np.std(combo)
+            if std < best_std:
+                best_std = std
+                best_avg = np.mean(combo)
+    
+        return round(best_avg, 2) if best_avg else None
 
-    df["COMPOSITE_FAIR_VALUE"] = df.apply(composite, axis=1)
+    df["COMPOSITE_FAIR_VALUE"] = df.apply(smart_composite, axis=1)
     cmp = df.apply(lambda r: _safe(r.get("CMP")), axis=1)
     cfv = df["COMPOSITE_FAIR_VALUE"]
     df["UPSIDE_PCT"]           = ((cfv - cmp) / cmp * 100).round(1).where(cmp.notna() & cfv.notna())
