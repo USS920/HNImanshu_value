@@ -5,7 +5,10 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every 1 hour
+    # Every 30 min between 09:15–14:30 IST
+    - cron: "45 3 * * *"
+    - cron: "15,45 4-8 * * *"
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       force_full:
