@@ -40,19 +40,18 @@ jobs:
         run: |
           HOUR=$(date -u +"%H")
           MIN=$(date -u +"%M")
-          DAY=$(date -u +"%u")  # 1=Mon ... 7=Sun
 
           FORCE="${{ github.event.inputs.force_full }}"
           EVENT="${{ github.event_name }}"
 
-          echo "Current UTC: $HOUR:$MIN | Day: $DAY | Force: $FORCE | Event: $EVENT"
+          echo "Current UTC: $HOUR:$MIN | Force: $FORCE | Event: $EVENT"
 
           # 🔥 FORCE FULL (manual trigger only)
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
 
-          # 🟢 NORMAL FULL RUN (weekday 10:00 UTC)
-          elif [ "$DAY" -le 5 ] && [ "$HOUR" = "10" ] && [ "$MIN" = "00" ]; then
+          # 🟢 NORMAL FULL RUN (10:00 UTC DAILY)
+          elif [ "$HOUR" = "10" ] && [ "$MIN" = "00" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
 
           # 🔵 LIGHT RUN
@@ -68,7 +67,7 @@ jobs:
 
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
-          -d text="Full update started (Market Close)..."
+          -d text="Full update started..."
 
           python n500.py || echo "n500 failed"
           python nm250.py || echo "nm250 failed"
@@ -104,7 +103,7 @@ jobs:
       - name: Install Firebase
         run: npm install -g firebase-tools
 
-      # 🚀 Deploy using token (FIXED)
+      # 🚀 Deploy using token
       - name: Deploy
         run: |
           firebase deploy --project hnimanshu --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive || echo "deploy failed"
