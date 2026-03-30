@@ -444,6 +444,7 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     if name_col in df.columns:
         df = df.rename(columns={name_col: "COMPANY_NAME"})
     elif "COMPANY_NAME" not in df.columns:
+        print(df.columns)
         print("ERROR: Company name column missing")
         sys.exit(1)
 
