@@ -69,7 +69,7 @@ jobs:
           -d chat_id="-1002683944312" \
           -d text="Full update started..."
           
-          python -u fetch_news.py || echo "news failed"
+          #python -u fetch_news.py || echo "news failed"
           python n500.py || echo "n500 failed"
           python nm250.py || echo "nm250 failed"
           python ns500.py || echo "ns500 failed"
