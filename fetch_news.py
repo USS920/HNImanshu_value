@@ -16,7 +16,7 @@ from gnews import GNews
 IST          = timezone(timedelta(hours=5, minutes=30))
 TASK_TIMEOUT = 10
 BATCH_SIZE   = 10
-NEWS_DAYS    = 15   # ← UPDATED
+NEWS_DAYS    = 15
 
 INDEX_URLS = {
     "niftymicrocap250": "https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv",
@@ -46,7 +46,7 @@ def fetch_index_csvs():
 
     frames = []
 
-    for index, url in INDEX_URLS.items():
+    for url in INDEX_URLS.values():
         try:
             r = session.get(url, timeout=10)
             r.raise_for_status()
@@ -94,7 +94,6 @@ def google_news_for_stock(symbol, name, days=15):
                 period=f"{days}d",
                 max_results=100,
             )
-
             articles = g.get_news(name)
             break
         except Exception:
@@ -136,7 +135,6 @@ def google_news_for_stock(symbol, name, days=15):
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
-
     df.sort_values("datetime", ascending=False, inplace=True)
 
     return df
@@ -187,11 +185,11 @@ def main():
 
         batch_all = pd.concat(batch_frames, ignore_index=True)
 
-        # STRICT IST FILTERING (final authority)
+        # Convert to datetime + make IST-aware
         batch_all["dt_parsed"] = pd.to_datetime(
             batch_all["datetime"].str.replace(" IST", ""),
             errors="coerce"
-        )
+        ).dt.tz_localize(IST)
 
         cutoff = datetime.now(IST) - timedelta(days=NEWS_DAYS)
 
