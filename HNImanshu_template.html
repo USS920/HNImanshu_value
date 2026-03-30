@@ -205,6 +205,48 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .fv-pill .cnt { font-family: var(--mono); font-size: 9px; color: var(--text3); }
 .fv-pill.active .cnt { color: var(--blue); }
 
+/* ── HIDE NAN FAIR VAL BUTTON ── */
+.hide-nan-wrap {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.hide-nan-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 7px 10px;
+  background: rgba(76,175,80,0.07);
+  border: 1px solid rgba(76,175,80,0.35);
+  border-radius: 7px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 11.5px; color: var(--text2);
+  text-align: left; position: relative;
+}
+.hide-nan-btn:hover { background: rgba(76,175,80,0.12); border-color: rgba(76,175,80,0.55); }
+.hide-nan-btn.active {
+  background: rgba(76,175,80,0.10);
+  border-color: #4caf50;
+  color: var(--text);
+}
+.hide-nan-check-icon {
+  width: 17px; height: 17px; flex-shrink: 0;
+  border: 1.5px solid var(--border2);
+  border-radius: 4px; background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  pointer-events: none;
+}
+.hide-nan-btn.active .hide-nan-check-icon {
+  background: #4caf50; border-color: #4caf50;
+}
+.hide-nan-check-icon svg { display: none; }
+.hide-nan-btn.active .hide-nan-check-icon svg { display: block; }
+.hide-nan-label { flex: 1; font-size: 11px; font-family: var(--sans); line-height: 1.3; user-select: none; }
+.hide-nan-dismiss {
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+  padding: 0 2px; line-height: 1; flex-shrink: 0;
+  transition: color 0.15s;
+}
+.hide-nan-btn:hover .hide-nan-dismiss { color: var(--text2); }
+
 /* Info button + tooltip */
 .info-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -365,7 +407,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
               background var(--transition), border-color var(--transition);
   pointer-events: none;
 }
-/* ── CHANGE 1: increased max-height from 380px to 460px ── */
 #detail-panel.open {
   display: block; max-height: 460px; opacity: 1;
   transform: translateY(0); pointer-events: all; padding: 12px 16px 14px;
@@ -442,11 +483,9 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .dm { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
 .dm-l { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
 .dm-v { font-family: var(--mono); font-size: 13px; font-weight: 600; }
-/* Last metric spans full row so no empty ghost cells appear */
 .dm:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
 .dm:last-child:nth-child(3n+2) { grid-column: span 2; }
 
-/* ── CHANGE 2: screener-btn on desktop sits inline with header, hidden on mobile ── */
 .screener-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
   background: rgba(107,140,186,0.08); border: 1px solid var(--blue);
@@ -455,10 +494,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 }
 .screener-btn:hover { background: rgba(107,140,186,0.15); }
 
-/* Desktop: screener link sits below stock name — shown on desktop, hidden on mobile */
 .dp-screener-desktop { display: block; }
 
-/* Mobile "Top News" button — hidden on desktop, shown on mobile */
 .top-news-btn {
   display: none;
   align-items: center; gap: 4px; padding: 5px 10px;
@@ -468,7 +505,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 }
 .top-news-btn:hover { background: rgba(212,180,122,0.15); }
 
-/* ── CHANGE 3: mobile action row — full-width flex buttons at bottom ── */
 .dp-action-row-mobile {
   display: none;
 }
@@ -566,6 +602,42 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .news-sheet-scroll::-webkit-scrollbar { width: 3px; }
 .news-sheet-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+/* ── MOBILE HIDE NAN BUTTON in filter sheet ── */
+.sheet-hide-nan-wrap {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sheet-hide-nan-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 12px;
+  background: rgba(76,175,80,0.07);
+  border: 1px solid rgba(76,175,80,0.35);
+  border-radius: 8px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 12px; color: var(--text2);
+  text-align: left;
+}
+.sheet-hide-nan-btn:hover { background: rgba(76,175,80,0.12); border-color: rgba(76,175,80,0.55); }
+.sheet-hide-nan-btn.active {
+  background: rgba(76,175,80,0.10);
+  border-color: #4caf50;
+  color: var(--text);
+}
+.sheet-hide-nan-chk {
+  width: 18px; height: 18px; flex-shrink: 0;
+  border: 1.5px solid var(--border2);
+  border-radius: 4px; background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  pointer-events: none;
+}
+.sheet-hide-nan-btn.active .sheet-hide-nan-chk {
+  background: #4caf50; border-color: #4caf50;
+}
+.sheet-hide-nan-chk svg { display: none; }
+.sheet-hide-nan-btn.active .sheet-hide-nan-chk svg { display: block; }
+.sheet-hide-nan-lbl { flex: 1; font-size: 12px; line-height: 1.3; user-select: none; }
+
 /* ── MOBILE ── */
 @media (max-width: 768px) {
   body { overflow: hidden; }
@@ -639,7 +711,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .dp-drag-handle { width: 40px; height: 5px; background: var(--border2); border-radius: 3px; margin: 12px auto 8px; flex-shrink: 0; cursor: grab; }
   #detail-panel .dp-inner { padding: 10px 14px 16px; }
 
-  /* Mobile: stack layout, 3-wide pills, hide desktop news box and screener link */
   #detail-panel .dp-body { flex-direction: column; gap: 10px; }
   #detail-panel .dp-left { width: 100% !important; flex: none !important; min-width: 0; }
   #detail-panel .dp-right { display: none !important; width: 0 !important; flex: none !important; padding: 0 !important; }
@@ -648,10 +719,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #detail-panel .dp-header { margin-bottom: 10px; }
   .dp-close { font-size: 26px; font-weight: 200; padding: 2px 4px 2px 12px; }
 
-  /* Hide desktop screener link on mobile */
   .dp-screener-desktop { display: none !important; }
 
-  /* Show mobile action row with two full-width justified buttons */
   .dp-action-row-mobile {
     display: flex !important;
     gap: 8px;
@@ -678,7 +747,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   }
   .dp-action-row-mobile .mob-btn-news:hover { background: rgba(212,180,122,0.18); }
 
-  /* Hide the old scattered buttons on mobile */
   .top-news-btn { display: none !important; }
 
   #detail-overlay {
@@ -722,7 +790,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   position: fixed; left: 0; right: 0; bottom: 0; top: auto;
   background: var(--bg2); border-top: 2px solid var(--border2);
   border-radius: 22px 22px 0 0; z-index: 600;
-  overflow: hidden; max-height: 52vh;
+  overflow: hidden; max-height: 60vh;
   box-shadow: 0 -4px 32px rgba(0,0,0,0.5);
   transform: translateY(110%);
   transition: transform 0.32s cubic-bezier(0.4,0,0.2,1),
@@ -908,6 +976,18 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
       <div class="sb-label">Fair Value</div>
       <div class="fv-pills" id="fv-pills"></div>
     </div>
+
+    <!-- ── HIDE NaN FAIR VAL BUTTON (Desktop Sidebar) ── -->
+    <div class="hide-nan-wrap">
+      <button class="hide-nan-btn active" id="hide-nan-btn" aria-label="Hide stocks with no Fair Value data">
+        <span class="hide-nan-check-icon">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="hide-nan-label">Hide Unhealthy Stocks</span>
+        <span class="hide-nan-dismiss">—</span>
+      </button>
+    </div>
+
     <div class="sb-section">
       <div class="sb-label">Smart Filters</div>
       <button class="sf-select-all" id="sf-select-all-btn">&#10003; Select All</button>
@@ -1016,13 +1096,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div id="detail-panel">
       <div class="dp-drag-handle"></div>
       <div class="dp-inner">
-
-        <!-- CHANGE 2: Screener link moved into header, beside stock name (desktop) -->
         <div class="dp-header">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <div class="dp-name" id="dp-name">—</div>
-              <!-- Desktop screener link — beside stock name -->
               <a href="#" class="screener-btn dp-screener-desktop" id="dp-link" target="_blank">↗ Screener.in</a>
             </div>
             <div class="dp-sub" id="dp-sub">—</div>
@@ -1038,7 +1115,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
           <div class="dp-left">
             <div class="dp-metrics" id="dp-metrics"></div>
 
-            <!-- CHANGE 3: Mobile action row — full-width justified buttons -->
             <div class="dp-action-row-mobile">
               <a href="#" class="mob-btn mob-btn-screener" id="dp-link-mobile" target="_blank">↗ View on Screener.in</a>
               <button class="mob-btn mob-btn-news" id="dp-news-btn">📰 Top News</button>
@@ -1104,6 +1180,17 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     </div>
   </div>
   <div id="filter-sheet-body">
+
+    <!-- ── HIDE NaN FAIR VAL BUTTON (Mobile Filter Sheet) ── -->
+    <div class="sheet-hide-nan-wrap">
+      <button class="sheet-hide-nan-btn active" id="sheet-hide-nan-btn">
+        <span class="sheet-hide-nan-chk">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="sheet-hide-nan-lbl">Hide NaN Fair Val</span>
+      </button>
+    </div>
+
     <div class="sheet-section">
       <div class="sheet-label">Grade</div>
       <div class="sheet-grades" id="sheet-grade-pills"></div>
@@ -1215,6 +1302,33 @@ let universe='n500', rawData=DATASETS.n500, viewData=[];
 let activeGrades=new Set(), activeFVs=new Set();
 let searchQ='', sortCol='FINAL_RANK', sortDir='asc', selectedSym=null;
 
+// ── HIDE NaN FAIR VAL STATE ──
+// Persistent via localStorage, default = true (ON), immune to clearAll
+var HIDE_NAN_KEY = 'hnimanshu_hide_nan_fv';
+var hideNanFV = true; // default ON
+try {
+  var stored = localStorage.getItem(HIDE_NAN_KEY);
+  if (stored !== null) hideNanFV = stored === 'true';
+} catch(e) {}
+
+function saveHideNan() {
+  try { localStorage.setItem(HIDE_NAN_KEY, hideNanFV ? 'true' : 'false'); } catch(e) {}
+}
+
+function syncHideNanUI() {
+  var btn = document.getElementById('hide-nan-btn');
+  var sheetBtn = document.getElementById('sheet-hide-nan-btn');
+  if (btn) btn.classList.toggle('active', hideNanFV);
+  if (sheetBtn) sheetBtn.classList.toggle('active', hideNanFV);
+}
+
+function toggleHideNan() {
+  hideNanFV = !hideNanFV;
+  saveHideNan();
+  syncHideNanUI();
+  run();
+}
+
 function f1(v){ return v!=null?Number(v).toFixed(1):'—'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtMC(v){ if(!v)return'—'; if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr'; if(v>=1000)return(v/1000).toFixed(1)+'K Cr'; return v.toFixed(0)+' Cr'; }
@@ -1318,6 +1432,8 @@ function buildMobileSheet(){
     var desk=document.getElementById('sf-'+k), mob=document.getElementById('sf-'+k+'-m');
     if(desk&&mob) mob.checked=desk.checked;
   });
+  // Sync hide-nan state in mobile sheet
+  syncHideNanUI();
 }
 
 var _filterOpen=false;
@@ -1376,6 +1492,7 @@ function toggleFV(f){
 function handleSearch(v){ searchQ=v.toLowerCase(); updateSearchClearBtn(); run(); }
 
 function clearAll(){
+  // NOTE: hideNanFV is intentionally NOT reset here
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
   updateSelectAllBtn();
@@ -1400,6 +1517,10 @@ function run(){
   var d=rawData;
   if(activeGrades.size) d=d.filter(function(r){ return activeGrades.has(r.GRADE); });
   if(activeFVs.size)    d=d.filter(function(r){ return activeFVs.has(r.FV_GRADE); });
+  // ── Hide NaN Fair Val filter ──
+  if(hideNanFV) d=d.filter(function(r){
+    return r.COMPOSITE_FAIR_VALUE!=null && r.COMPOSITE_FAIR_VALUE!=='' && !isNaN(+r.COMPOSITE_FAIR_VALUE);
+  });
   if(document.getElementById('sf-piotroski')&&document.getElementById('sf-piotroski').checked)
     d=d.filter(function(r){ return r.PIOTROSKI_SCORE!=null&&+r.PIOTROSKI_SCORE>=8; });
   if(document.getElementById('sf-netmargin')&&document.getElementById('sf-netmargin').checked)
@@ -1477,7 +1598,6 @@ function showDetail(sym){
   document.getElementById('dp-sub').textContent=s.SYMBOL+' · '+(s.INDUSTRY||'—')+' · '+fmtMC(s.MARKET_CAP_CR);
   var dg=document.getElementById('dp-grade'); dg.textContent=s.GRADE; dg.style.color=gc; dg.style.borderColor=gc;
 
-  // Update both screener links (desktop + mobile)
   var url = s.SCREENER_URL||'#';
   var dpLink=document.getElementById('dp-link');
   var dpLinkMob=document.getElementById('dp-link-mobile');
@@ -1509,13 +1629,11 @@ function showDetail(sym){
     return '<div class="dm"><div class="dm-l">'+m.l+'</div><div class="dm-v '+m.c+'">'+m.v+'</div></div>';
   }).join('');
 
-  // Desktop news panel
   var newsScroll=document.getElementById('dp-news-scroll');
   var newsSym=document.getElementById('dp-news-sym');
   if(newsScroll) newsScroll.innerHTML=buildNewsHTML(sym);
   if(newsSym)    newsSym.textContent=sym;
 
-  // Wire mobile "Top News" button
   var newsBtn=document.getElementById('dp-news-btn');
   if(newsBtn){ newsBtn.onclick=function(e){ e.preventDefault(); openNewsSheet(sym); }; }
 
@@ -1541,6 +1659,12 @@ function updateSelectAllBtn(){
 // ── EVENT WIRING ──
 
 document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+// Wire hide-nan buttons
+var hideNanBtn = document.getElementById('hide-nan-btn');
+var sheetHideNanBtn = document.getElementById('sheet-hide-nan-btn');
+if(hideNanBtn) hideNanBtn.addEventListener('click', toggleHideNan);
+if(sheetHideNanBtn) sheetHideNanBtn.addEventListener('click', toggleHideNan);
 
 function wireInfoBtn(btnId, tipId){
   var btn=document.getElementById(btnId), tip=document.getElementById(tipId);
@@ -1625,6 +1749,7 @@ document.querySelectorAll('.sheet-sf-check').forEach(function(cb){
   });
 });
 var sheetClearBtn=document.getElementById('sheet-clear-btn');
+// Sheet clear does NOT touch hideNanFV — intentional
 if(sheetClearBtn) sheetClearBtn.addEventListener('click',function(){ clearAll(); closeFilters(); });
 
 document.getElementById('news-overlay').addEventListener('click',closeNewsSheet);
@@ -1674,6 +1799,9 @@ document.getElementById('sf-select-all-btn').addEventListener('click',function()
 document.querySelectorAll('#sidebar .sf-check').forEach(function(cb){
   cb.addEventListener('change',function(){ updateSelectAllBtn(); run(); });
 });
+
+// Initialize hide-nan UI state from persisted value
+syncHideNanUI();
 
 var th=document.querySelector('th[data-col="FINAL_RANK"]'); if(th) th.classList.add('sorted-asc');
 buildSidebar(); buildMobileSheet(); run();
