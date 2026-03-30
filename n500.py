@@ -60,7 +60,7 @@ import os
 try:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
 
-    if ist_time.hour <= 15:
+    if ist_time.hour <= 19:
         os.remove(OUTPUT_FILE)
         print(f"File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 
