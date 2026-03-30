@@ -204,68 +204,40 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .fv-pill .cnt { font-family: var(--mono); font-size: 9px; color: var(--text3); }
 .fv-pill.active .cnt { color: var(--blue); }
 
-/* ── UNHEALTHY ROW (desktop sidebar, inside .sb-section) ── */
-.unhealthy-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 9px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.12s;
-  font-size: 11px;
-  width: 100%;
-  color: var(--text2);
-  margin-top: 2px;
+/* ── HIDE NAN FAIR VAL BUTTON ── */
+.hide-nan-wrap { padding: 2px 0 4px; }
+.hide-nan-btn {
+  display: flex; align-items: center; gap: 0;
+  padding: 5px 9px; border-radius: 6px; border: 1px solid transparent;
+  cursor: pointer; transition: all 0.12s; width: 100%;
+  color: var(--text2); background: transparent;
 }
-.unhealthy-row:hover { border-color: var(--border2); color: var(--text); }
-.unhealthy-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-.unhealthy-check {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+.hide-nan-btn:hover { border-color: var(--border2); color: var(--text); }
+.hide-nan-btn.active { color: var(--text2); }
+.hide-nan-check-icon {
+  width: 15px; height: 15px; flex-shrink: 0;
   border: 1.5px solid var(--border2);
-  border-radius: 3px;
-  background: transparent;
-  cursor: pointer;
+  border-radius: 4px; background: transparent;
+  display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, border-color 0.15s;
-  position: relative;
-  top: 0;
+  pointer-events: none;
+  margin-right: 2px;
 }
-.unhealthy-check:checked {
-  background: var(--text3);
-  border-color: var(--text3);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
+.hide-nan-btn.active .hide-nan-check-icon {
+  background: var(--text3); border-color: var(--text3);
 }
-.unhealthy-label {
-  font-size: 11px;
-  color: var(--text2);
-  user-select: none;
-  line-height: 1.3;
+.hide-nan-check-icon svg { opacity: 0; }
+.hide-nan-btn.active .hide-nan-check-icon svg { opacity: 1; }
+.hide-nan-label {
+  flex: 1; font-size: 11.5px; font-family: var(--sans);
+  line-height: 1.3; user-select: none; color: var(--text2);
 }
-.unhealthy-cnt {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--text3);
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  flex-shrink: 0;
-  line-height: 1.6;
-  min-width: 20px;
-  text-align: center;
+.hide-nan-count {
+  font-family: var(--mono); font-size: 9px; color: var(--text3);
+  padding: 1px 5px; border-radius: 3px;
+  background: transparent; border: 1px solid var(--border2);
+  flex-shrink: 0; line-height: 1.6;
+  min-width: 20px; text-align: center;
 }
 
 /* Info button + tooltip */
@@ -623,7 +595,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .news-sheet-scroll::-webkit-scrollbar { width: 3px; }
 .news-sheet-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-/* ── MOBILE HIDE NAN BUTTON in filter sheet (UNCHANGED — position is great on phone) ── */
+/* ── MOBILE HIDE NAN BUTTON in filter sheet ── */
 .sheet-hide-nan-wrap {
   padding: 8px 16px 6px;
 }
@@ -997,14 +969,17 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="sb-section">
       <div class="sb-label">Fair Value</div>
       <div class="fv-pills" id="fv-pills"></div>
-      <!-- UNHEALTHY STOCKS CHECKBOX — always on, below Overvalued -->
-      <label class="unhealthy-row" id="unhealthy-row-desktop">
-        <div class="unhealthy-left">
-          <input type="checkbox" class="unhealthy-check" id="sf-hide-nan" checked>
-          <span class="unhealthy-label">Hide unhealthy stocks</span>
-        </div>
-        <span class="unhealthy-cnt" id="unhealthy-nan-cnt">—</span>
-      </label>
+    </div>
+
+    <!-- ── HIDE NaN FAIR VAL BUTTON (Desktop Sidebar) ── -->
+    <div class="hide-nan-wrap">
+      <button class="hide-nan-btn" id="hide-nan-btn" aria-label="Hide stocks with no Fair Value data">
+        <span class="hide-nan-check-icon">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="hide-nan-label">Hide NaN Fair Val</span>
+        <span class="hide-nan-count" id="hide-nan-count"></span>
+      </button>
     </div>
 
     <div class="sb-section">
@@ -1200,7 +1175,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
   <div id="filter-sheet-body">
 
-    <!-- ── HIDE NaN FAIR VAL BUTTON (Mobile Filter Sheet — position kept as-is) ── -->
+    <!-- ── HIDE NaN FAIR VAL BUTTON (Mobile Filter Sheet) ── -->
     <div class="sheet-hide-nan-wrap">
       <button class="sheet-hide-nan-btn" id="sheet-hide-nan-btn">
         <span class="sheet-hide-nan-chk">
@@ -1324,14 +1299,12 @@ let activeGrades=new Set(), activeFVs=new Set();
 let searchQ='', sortCol='FINAL_RANK', sortDir='asc', selectedSym=null;
 
 // ── HIDE NaN FAIR VAL STATE ──
-// Default = true (always on). Persisted in localStorage. Immune to clearAll.
+// Persistent via localStorage, default = true (ON), immune to clearAll
 var HIDE_NAN_KEY = 'hnimanshu_hide_nan_fv';
-var hideNanFV = true; // always-on default
+var hideNanFV = true; // default ON
 try {
   var stored = localStorage.getItem(HIDE_NAN_KEY);
   if (stored !== null) hideNanFV = stored === 'true';
-  // On first visit (no stored value), persist the default=true immediately
-  else localStorage.setItem(HIDE_NAN_KEY, 'true');
 } catch(e) {}
 
 function saveHideNan() {
@@ -1339,12 +1312,12 @@ function saveHideNan() {
 }
 
 function syncHideNanUI() {
-  // Desktop: native checkbox
-  var chk = document.getElementById('sf-hide-nan');
-  if (chk) chk.checked = hideNanFV;
-
-  // Mobile sheet button
+  var btn = document.getElementById('hide-nan-btn');
   var sheetBtn = document.getElementById('sheet-hide-nan-btn');
+  if (btn) {
+    if (hideNanFV) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
   if (sheetBtn) {
     if (hideNanFV) sheetBtn.classList.add('active');
     else sheetBtn.classList.remove('active');
@@ -1355,10 +1328,10 @@ function updateHideNanCount() {
   var nanCount = rawData.filter(function(r){
     return r.COMPOSITE_FAIR_VALUE == null || r.COMPOSITE_FAIR_VALUE === '' || isNaN(+r.COMPOSITE_FAIR_VALUE);
   }).length;
-  var cntEl = document.getElementById('unhealthy-nan-cnt');
+  var cntEl = document.getElementById('hide-nan-count');
   var sheetCntEl = document.getElementById('sheet-hide-nan-count');
-  var txt = nanCount > 0 ? String(nanCount) : '0';
-  if (cntEl) cntEl.textContent = txt;
+  var txt = nanCount > 0 ? String(nanCount) : '';
+  if (cntEl) { cntEl.textContent = txt; cntEl.style.display = nanCount > 0 ? '' : 'none'; }
   if (sheetCntEl) { sheetCntEl.textContent = txt; sheetCntEl.style.display = nanCount > 0 ? '' : 'none'; }
 }
 
@@ -1541,7 +1514,7 @@ function toggleFV(f){
 function handleSearch(v){ searchQ=v.toLowerCase(); updateSearchClearBtn(); run(); }
 
 function clearAll(){
-  // NOTE: hideNanFV is intentionally NOT reset here — it persists across clear-all
+  // NOTE: hideNanFV is intentionally NOT reset here
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
   updateSelectAllBtn();
@@ -1709,18 +1682,10 @@ function updateSelectAllBtn(){
 
 document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
-// Desktop: wire the native checkbox (inside unhealthy-row label)
-var hideNanChk = document.getElementById('sf-hide-nan');
-if(hideNanChk) hideNanChk.addEventListener('change', function() {
-  hideNanFV = hideNanChk.checked;
-  saveHideNan();
-  syncHideNanUI();
-  updateHideNanCount();
-  run();
-});
-
-// Mobile sheet button (unchanged)
+// Wire hide-nan buttons
+var hideNanBtn = document.getElementById('hide-nan-btn');
 var sheetHideNanBtn = document.getElementById('sheet-hide-nan-btn');
+if(hideNanBtn) hideNanBtn.addEventListener('click', toggleHideNan);
 if(sheetHideNanBtn) sheetHideNanBtn.addEventListener('click', toggleHideNan);
 
 function wireInfoBtn(btnId, tipId){
@@ -1820,6 +1785,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     if(_newsOpen){ closeNewsSheet(); return; }
     if(_filterOpen){ closeFilters(); return; }
+    // If search field has content — clear it and blur, return to default view
     var inp=document.getElementById('search-inp');
     if(inp && (document.activeElement===inp || inp.value.length>0)){
       inp.value=''; searchQ=''; updateSearchClearBtn(); inp.blur(); run(); return;
@@ -1875,6 +1841,7 @@ if(sheetSelectAllBtn){
       if(desk) desk.checked=cb.checked;
     });
     updateSelectAllBtn();
+    // Update button label
     var nowAll=!allChecked;
     sheetSelectAllBtn.innerHTML=nowAll?'&#10005; Deselect All':'&#10003; Select All';
     sheetSelectAllBtn.classList.toggle('all-selected',nowAll);
@@ -1882,17 +1849,21 @@ if(sheetSelectAllBtn){
   });
 }
 
-// Initialize hide-nan UI state from persisted value (always-on default)
+// Initialize hide-nan UI state from persisted value
 syncHideNanUI();
 updateHideNanCount();
 
 // ── GLOBAL KEYPRESS → SEARCH (desktop only) ──
 document.addEventListener('keydown', function(e) {
+  // Only on desktop (ignore mobile touch environments)
   if (window.innerWidth <= 768) return;
+  // Ignore if already focused on an input, textarea, or contenteditable
   var tag = document.activeElement ? document.activeElement.tagName : '';
   if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+  // Ignore modifier-only keys, function keys, Escape, Enter, Tab, arrows, shortcuts
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key.length !== 1) return;
+  if (e.key.length !== 1) return; // skip non-printable keys
+  // Focus search and let the key flow in
   var inp = document.getElementById('search-inp');
   if (inp) { inp.focus(); }
 });
