@@ -8,6 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='18' font-weight='bold' fill='%23a89060' text-anchor='middle'%3EH%3C/text%3E%3C/svg%3E">
 <style>
+/* ═══════════════════════════════════════════════
+   THEME VARIABLES
+═══════════════════════════════════════════════ */
 :root {
   --accent: #8b7355;
   --accentd: #705c3e;
@@ -93,6 +96,7 @@ button { cursor: pointer; font-family: var(--sans); }
 a { text-decoration: none; }
 input { font-family: var(--sans); }
 
+/* ── HEADER ── */
 #header {
   display: flex;
   align-items: center;
@@ -149,8 +153,10 @@ body.day .toggle-track { background: var(--accent); }
 }
 body.day .toggle-thumb { transform: translateX(16px); }
 
+/* ── LAYOUT ── */
 #app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
+/* ── SIDEBAR ── */
 #sidebar {
   width: 210px; flex-shrink: 0; background: var(--bg2);
   border-right: 1px solid var(--border); display: flex;
@@ -199,41 +205,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .fv-pill .cnt { font-family: var(--mono); font-size: 9px; color: var(--text3); }
 .fv-pill.active .cnt { color: var(--blue); }
 
-/* ── UNHEALTHY STOCKS CHECKBOX ── */
-.unhealthy-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 9px 5px; margin-top: 6px;
-  border-radius: 6px; border: 1px solid var(--border2);
-  background: rgba(255,255,255,0.02); cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.unhealthy-row:hover { border-color: #5a5550; background: rgba(255,255,255,0.04); }
-.unhealthy-left { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
-.unhealthy-check {
-  appearance: none; -webkit-appearance: none;
-  width: 15px; height: 15px; flex-shrink: 0;
-  border: 1.5px solid var(--border2); border-radius: 3px;
-  background: transparent; cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.unhealthy-check:checked {
-  background: #5a5550; border-color: #7a7068;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%23c0b8ae' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: center;
-}
-.unhealthy-label { font-size: 11px; color: var(--text3); user-select: none; line-height: 1.3; }
-.unhealthy-cnt { font-family: var(--mono); font-size: 9px; color: var(--text4); flex-shrink: 0; }
-
-/* Mobile sheet unhealthy row */
-.sheet-unhealthy-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 7px 9px 6px; margin-top: 8px;
-  border-radius: 7px; border: 1px solid var(--border2);
-  background: rgba(255,255,255,0.02); cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.sheet-unhealthy-row:hover { border-color: #5a5550; background: rgba(255,255,255,0.04); }
-
+/* Info button + tooltip */
 .info-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 50%;
@@ -260,6 +232,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .it-head { font-family: var(--mono); font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
 .it-row { font-size: 10px; color: var(--text2); line-height: 1.6; padding-left: 4px; }
 
+/* Sidebar clear button */
 .sb-clear-wrap { padding: 4px 12px 6px; border-bottom: 1px solid var(--border); }
 .sb-clear-btn {
   width: 100%; padding: 7px 10px; background: transparent;
@@ -275,6 +248,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .sb-lu-label { font-family: var(--mono); font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 3px; }
 .sb-lu-val { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.3px; line-height: 1.55; white-space: pre-line; }
 
+/* ── SMART FILTERS (desktop sidebar) ── */
 .sf-select-all {
   width: 100%; padding: 5px 9px; background: transparent;
   border: 1px solid var(--border2); border-radius: 6px;
@@ -305,6 +279,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
 }
 .sf-row:has(.sf-check:checked) .sf-label { color: var(--text); }
 
+/* ── MAIN ── */
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 #toolbar {
   display: flex; align-items: center; gap: 8px;
@@ -332,6 +307,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
 .result-count { font-family: var(--mono); font-size: 10px; color: var(--text3); }
 .result-count span { color: var(--accent); }
 
+/* ── EXPORT CSV BUTTON ── */
 #download-csv-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 5px 12px; border: 1px solid var(--accent); border-radius: 5px;
@@ -351,6 +327,7 @@ body.day .toggle-thumb { transform: translateX(16px); }
   background: var(--accent) !important; color: var(--bg) !important; border-color: var(--accent) !important;
 }
 
+/* ── TABLE ── */
 #table-wrap { flex: 1; overflow: auto; position: relative; }
 #table-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
 #table-wrap::-webkit-scrollbar-track { background: transparent; }
@@ -376,6 +353,9 @@ td {
 tr:hover td { background: var(--accent-glow); }
 tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 
+/* ═══════════════════════════════════════════════════
+   DETAIL PANEL — desktop two-column (metrics + news)
+═══════════════════════════════════════════════════ */
 #detail-panel {
   background: var(--bg2); border-top: 1px solid var(--border);
   flex-shrink: 0; display: none; max-height: 0; overflow: hidden;
@@ -385,21 +365,32 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
               background var(--transition), border-color var(--transition);
   pointer-events: none;
 }
+/* ── CHANGE 1: increased max-height from 380px to 460px ── */
 #detail-panel.open {
   display: block; max-height: 460px; opacity: 1;
   transform: translateY(0); pointer-events: all; padding: 12px 16px 14px;
 }
+
+/* Desktop: two-column layout */
 .dp-body { display: flex; gap: 14px; align-items: flex-start; }
 .dp-left { flex: 1; min-width: 0; }
 .dp-right { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0; }
+
+/* ── News Box ── */
 .dp-news-box {
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .dp-news-header {
   display: flex; align-items: center; gap: 6px;
-  padding: 7px 10px 6px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0; background: var(--bg3);
+  padding: 7px 10px 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg3);
 }
 .dp-news-icon {
   width: 6px; height: 6px; border-radius: 50%;
@@ -435,6 +426,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   padding: 20px 10px; text-align: center;
   font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.3px;
 }
+
 .dp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
 .dp-name { font-size: 14px; font-weight: 700; }
 .dp-sub { font-size: 10px; color: var(--text2); font-family: var(--mono); margin-top: 2px; }
@@ -445,12 +437,16 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   transition: color 0.15s; margin-left: auto; flex-shrink: 0;
 }
 .dp-close:hover { color: var(--text); }
+/* 3-wide metric pill grid */
 .dp-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; }
 .dm { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
 .dm-l { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
 .dm-v { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+/* Last metric spans full row so no empty ghost cells appear */
 .dm:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
 .dm:last-child:nth-child(3n+2) { grid-column: span 2; }
+
+/* ── CHANGE 2: screener-btn on desktop sits inline with header, hidden on mobile ── */
 .screener-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
   background: rgba(107,140,186,0.08); border: 1px solid var(--blue);
@@ -458,7 +454,11 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   transition: background 0.12s; margin-top: 3px; align-self: flex-start;
 }
 .screener-btn:hover { background: rgba(107,140,186,0.15); }
+
+/* Desktop: screener link sits below stock name — shown on desktop, hidden on mobile */
 .dp-screener-desktop { display: block; }
+
+/* Mobile "Top News" button — hidden on desktop, shown on mobile */
 .top-news-btn {
   display: none;
   align-items: center; gap: 4px; padding: 5px 10px;
@@ -466,7 +466,13 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   border-radius: 5px; color: var(--accent); font-size: 10px; font-family: var(--mono);
   transition: background 0.12s; margin-top: 10px; margin-left: 6px;
 }
-.dp-action-row-mobile { display: none; }
+.top-news-btn:hover { background: rgba(212,180,122,0.15); }
+
+/* ── CHANGE 3: mobile action row — full-width flex buttons at bottom ── */
+.dp-action-row-mobile {
+  display: none;
+}
+
 .empty-state { padding: 60px 20px; text-align: center; color: var(--text3); font-size: 13px; }
 .grade-badge {
   display: inline-block; padding: 1px 8px; border-radius: 20px;
@@ -492,6 +498,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 .combined-mid { font-family: var(--mono); color: var(--C); }
 .combined-lo  { font-family: var(--mono); color: var(--D); }
 
+/* ── FLOATING FILTER FAB (mobile fixed) ── */
 #filter-fab-fixed {
   display: none;
   position: fixed; bottom: 22px; right: 18px; z-index: 480;
@@ -512,12 +519,16 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 }
 #filter-fab-fixed.has-filters .fab-dot { display: block; }
 
+/* ═══════════════════════════════════════════════
+   MOBILE NEWS SHEET
+═══════════════════════════════════════════════ */
 #news-overlay {
   display: block; position: fixed; inset: 0;
   background: rgba(0,0,0,0.62); z-index: 700;
   opacity: 0; pointer-events: none; transition: opacity 0.28s ease;
 }
 #news-overlay.visible { opacity: 1; pointer-events: all; }
+
 #news-sheet {
   display: flex; flex-direction: column;
   position: fixed; left: 0; right: 0; bottom: 0;
@@ -543,6 +554,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   font-size: 20px; font-weight: 300; padding: 2px 4px;
   line-height: 1; cursor: pointer; transition: color 0.15s; flex-shrink: 0;
 }
+.news-sheet-close:hover { color: var(--text); }
 .news-sheet-label {
   font-family: var(--mono); font-size: 9px; font-weight: 700;
   color: var(--accent); text-transform: uppercase; letter-spacing: 1.2px;
@@ -551,7 +563,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding-bottom: env(safe-area-inset-bottom, 16px);
 }
+.news-sheet-scroll::-webkit-scrollbar { width: 3px; }
+.news-sheet-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+/* ── MOBILE ── */
 @media (max-width: 768px) {
   body { overflow: hidden; }
   #header {
@@ -570,6 +585,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .hni-wordmark .hni { font-size: 13px; }
   .hni-wordmark .manshu { font-size: 10px; }
   .hni-tagline { display: block !important; font-size: 7px; letter-spacing: 1.2px; margin-top: 1px; }
+  .toggle-icon { font-size: 13px; }
+  .toggle-track { width: 38px; height: 22px; }
+  .toggle-thumb { width: 16px; height: 16px; }
+  body.day .toggle-thumb { transform: translateX(16px); }
   .universe-switch {
     margin: 8px 0 0 0 !important; width: 100% !important; display: flex !important;
     gap: 2px !important; background: var(--bg) !important; border: 1px solid var(--border) !important;
@@ -583,6 +602,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     letter-spacing: 0.3px !important; transition: none !important; white-space: nowrap !important;
   }
   .uni-btn.active { background: var(--accent) !important; color: var(--bg) !important; font-weight: 700 !important; }
+
   #sidebar { display: none; }
   #main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
   #toolbar { padding: 6px 10px; gap: 6px; }
@@ -590,16 +610,20 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   .search-wrap { flex: 1; min-width: 0; }
   .search-input { flex: 1; width: 100%; min-width: 0; font-size: 11px; padding: 6px 28px 6px 9px; }
   .result-count { display: none; }
+
   #mobile-count-bar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 5px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
     font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0;
   }
   #mobile-count-bar span { color: var(--accent); }
+
   #table-wrap { display: block !important; flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
   #mobile-list { display: none !important; }
   #main-table { table-layout: auto !important; }
   #main-table th, #main-table td { white-space: nowrap; padding: 6px 10px !important; }
+
+  /* Mobile detail panel — full-width bottom sheet */
   #detail-panel {
     display: block !important; position: fixed !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
@@ -614,6 +638,8 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #detail-panel.open { transform: translateY(0) !important; pointer-events: all !important; }
   .dp-drag-handle { width: 40px; height: 5px; background: var(--border2); border-radius: 3px; margin: 12px auto 8px; flex-shrink: 0; cursor: grab; }
   #detail-panel .dp-inner { padding: 10px 14px 16px; }
+
+  /* Mobile: stack layout, 3-wide pills, hide desktop news box and screener link */
   #detail-panel .dp-body { flex-direction: column; gap: 10px; }
   #detail-panel .dp-left { width: 100% !important; flex: none !important; min-width: 0; }
   #detail-panel .dp-right { display: none !important; width: 0 !important; flex: none !important; padding: 0 !important; }
@@ -621,23 +647,40 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #detail-panel .dp-metrics { grid-template-columns: repeat(3, 1fr) !important; }
   #detail-panel .dp-header { margin-bottom: 10px; }
   .dp-close { font-size: 26px; font-weight: 200; padding: 2px 4px 2px 12px; }
+
+  /* Hide desktop screener link on mobile */
   .dp-screener-desktop { display: none !important; }
+
+  /* Show mobile action row with two full-width justified buttons */
   .dp-action-row-mobile {
-    display: flex !important; gap: 8px; margin-top: 12px; width: 100%;
+    display: flex !important;
+    gap: 8px;
+    margin-top: 12px;
+    width: 100%;
   }
   .dp-action-row-mobile .mob-btn {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-    padding: 11px 8px; border-radius: 8px;
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 11px 8px;
+    border-radius: 8px;
     font-size: 12px; font-family: var(--mono); font-weight: 600;
-    text-align: center; border: 1px solid; transition: background 0.12s; cursor: pointer;
+    text-align: center;
+    border: 1px solid;
+    transition: background 0.12s;
+    cursor: pointer;
   }
   .dp-action-row-mobile .mob-btn-screener {
     background: rgba(107,140,186,0.08); border-color: var(--blue); color: var(--blue);
   }
+  .dp-action-row-mobile .mob-btn-screener:hover { background: rgba(107,140,186,0.18); }
   .dp-action-row-mobile .mob-btn-news {
     background: rgba(212,180,122,0.08); border-color: var(--accent); color: var(--accent);
   }
+  .dp-action-row-mobile .mob-btn-news:hover { background: rgba(212,180,122,0.18); }
+
+  /* Hide the old scattered buttons on mobile */
   .top-news-btn { display: none !important; }
+
   #detail-overlay {
     display: block !important; position: fixed; inset: 0;
     background: rgba(0,0,0,0.5); z-index: 498; opacity: 0;
@@ -645,7 +688,9 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     -webkit-tap-highlight-color: transparent;
   }
   #detail-overlay.visible { opacity: 1; pointer-events: all; }
+
   #filter-fab-fixed { display: flex; }
+
   #download-csv-btn {
     padding: 7px 10px; margin-left: 0; font-size: 11px; border-radius: 7px; flex-shrink: 0; gap: 4px;
   }
@@ -654,15 +699,18 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   #download-csv-btn .csv-short { display: inline !important; }
 }
 
+/* Hide mobile-only elements on desktop */
 #mobile-list { display: none; }
 #mobile-count-bar { display: none; }
 #filter-fab { display: none; }
 #detail-overlay { display: none !important; }
 
+/* ── TABLET ── */
 @media (min-width: 769px) and (max-width: 1100px) {
   #sidebar { width: 180px; }
 }
 
+/* ── FILTER OVERLAY + SHEET ── */
 #filter-overlay {
   display: block; position: fixed; inset: 0;
   background: rgba(0,0,0,0.55); z-index: 590;
@@ -748,6 +796,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 }
 .sheet-sf-row::after { display: none; }
 
+/* ── WELCOME OVERLAY ── */
 #wm-overlay {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(0,0,0,0.72);
@@ -781,6 +830,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
 })();
 </script>
 
+<!-- ── WELCOME OVERLAY ── -->
 <div id="wm-overlay">
   <div id="wm-box">
     <h2>HNImanshu Value Screener</h2>
@@ -809,6 +859,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
+<!-- ── HEADER ── -->
 <div id="header">
   <a class="hni-logo" href="#">
     <div class="hni-mark">
@@ -844,8 +895,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
+<!-- ── APP ── -->
 <div id="app">
 
+  <!-- ── SIDEBAR ── -->
   <div id="sidebar">
     <div class="sb-section">
       <div class="sb-label">Grade <button class="info-btn" id="grade-info-btn" aria-label="Grade info">i</button></div>
@@ -854,14 +907,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="sb-section">
       <div class="sb-label">Fair Value</div>
       <div class="fv-pills" id="fv-pills"></div>
-      <!-- UNHEALTHY STOCKS CHECKBOX — always on, below Overvalued -->
-      <label class="unhealthy-row" id="unhealthy-row-desktop">
-        <div class="unhealthy-left">
-          <input type="checkbox" class="unhealthy-check" id="sf-hide-nan" checked>
-          <span class="unhealthy-label">Hide unhealthy stocks</span>
-        </div>
-        <span class="unhealthy-cnt" id="unhealthy-nan-cnt">—</span>
-      </label>
     </div>
     <div class="sb-section">
       <div class="sb-label">Smart Filters</div>
@@ -888,6 +933,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div class="sb-clear-wrap">
       <button id="sb-clear-btn" class="sb-clear-btn"><span class="x-icon">✕</span> <b>Clear All Filters</b></button>
     </div>
+    <!-- Hidden lookup elements kept for build.py compatibility -->
     <input type="text" id="lookup-inp" style="display:none" autocomplete="off">
     <button id="lookup-clear-btn" style="display:none"></button>
     <div id="lookup-dd" style="display:none"></div>
@@ -903,6 +949,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     </div>
   </div>
 
+  <!-- ── MAIN ── -->
   <div id="main">
     <div id="toolbar">
       <button id="filter-fab" style="display:none" aria-label="Open filters"></button>
@@ -963,13 +1010,19 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
     <div id="mobile-list"></div>
     <div id="detail-overlay"></div>
 
+    <!-- ═══════════════════════════════════════════════
+         DETAIL PANEL — metrics left, news right
+    ═══════════════════════════════════════════════ -->
     <div id="detail-panel">
       <div class="dp-drag-handle"></div>
       <div class="dp-inner">
+
+        <!-- CHANGE 2: Screener link moved into header, beside stock name (desktop) -->
         <div class="dp-header">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <div class="dp-name" id="dp-name">—</div>
+              <!-- Desktop screener link — beside stock name -->
               <a href="#" class="screener-btn dp-screener-desktop" id="dp-link" target="_blank">↗ Screener.in</a>
             </div>
             <div class="dp-sub" id="dp-sub">—</div>
@@ -979,14 +1032,20 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
             <button class="dp-close" id="dp-close-btn">✕</button>
           </div>
         </div>
+
+        <!-- Two-column body -->
         <div class="dp-body">
           <div class="dp-left">
             <div class="dp-metrics" id="dp-metrics"></div>
+
+            <!-- CHANGE 3: Mobile action row — full-width justified buttons -->
             <div class="dp-action-row-mobile">
               <a href="#" class="mob-btn mob-btn-screener" id="dp-link-mobile" target="_blank">↗ View on Screener.in</a>
               <button class="mob-btn mob-btn-news" id="dp-news-btn">📰 Top News</button>
             </div>
           </div>
+
+          <!-- News column (desktop only — hidden on mobile via CSS) -->
           <div class="dp-right">
             <div class="dp-news-box">
               <div class="dp-news-header">
@@ -1002,9 +1061,10 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
         </div>
       </div>
     </div>
-  </div>
-</div>
+  </div><!-- end #main -->
+</div><!-- end #app -->
 
+<!-- ── FLOATING FILTER FAB (mobile only) ── -->
 <button id="filter-fab-fixed" aria-label="Open filters">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <line x1="3"  y1="7"  x2="13.5" y2="7"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1017,6 +1077,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   <div class="fab-dot"></div>
 </button>
 
+<!-- ── MOBILE NEWS SHEET ── -->
 <div id="news-overlay"></div>
 <div id="news-sheet">
   <div class="news-sheet-drag"></div>
@@ -1032,6 +1093,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
+<!-- ── FILTER SHEET ── -->
 <div id="filter-overlay"></div>
 <div id="filter-sheet">
   <div id="filter-sheet-header">
@@ -1050,14 +1112,6 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
       <div class="sheet-col-left">
         <div class="sheet-label">Fair Value</div>
         <div class="sheet-fv-list" id="sheet-fv-btns"></div>
-        <!-- MOBILE: Unhealthy stocks checkbox below FV list -->
-        <label class="sheet-unhealthy-row" id="unhealthy-row-mobile">
-          <div class="unhealthy-left">
-            <input type="checkbox" class="unhealthy-check" id="sf-hide-nan-m" checked>
-            <span class="unhealthy-label">Hide unhealthy</span>
-          </div>
-          <span class="unhealthy-cnt" id="unhealthy-nan-cnt-m">—</span>
-        </label>
       </div>
       <div class="sheet-col-right">
         <div class="sheet-label">Smart Filters</div>
@@ -1090,6 +1144,7 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
+<!-- ── GRADE INFO TOOLTIP (shared) ── -->
 <div class="info-tooltip" id="grade-tooltip">
   <div class="it-title">How stocks are scored</div>
   <div class="it-section">
@@ -1115,11 +1170,18 @@ tr.row-selected td { background: rgba(168,144,96,0.06) !important; }
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════
+     DATA — build.py replaces %%DATASETS_PLACEHOLDER%%
+════════════════════════════════════════════════ -->
 <script>
 %%DATASETS_PLACEHOLDER%%
 
-var NEWS_DATA = { '__default__': [] };
+// ── NEWS DATA ──
+var NEWS_DATA = {
+  '__default__': []
+};
 
+// ── All Stocks: merge + deduplicate + re-rank ──
 (function(){
   var seen = {}, merged = [];
   var sources = (DATASETS.n500||[]).concat(DATASETS.sc250||[]).concat(DATASETS.mc250||[]);
@@ -1153,11 +1215,6 @@ let universe='n500', rawData=DATASETS.n500, viewData=[];
 let activeGrades=new Set(), activeFVs=new Set();
 let searchQ='', sortCol='FINAL_RANK', sortDir='asc', selectedSym=null;
 
-function isUnhealthy(r){
-  var fv = r.COMPOSITE_FAIR_VALUE;
-  return fv == null || fv === '' || isNaN(+fv) || +fv === 0;
-}
-
 function f1(v){ return v!=null?Number(v).toFixed(1):'—'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtMC(v){ if(!v)return'—'; if(v>=1e5)return(v/1e5).toFixed(1)+'L Cr'; if(v>=1000)return(v/1000).toFixed(1)+'K Cr'; return v.toFixed(0)+' Cr'; }
@@ -1174,9 +1231,7 @@ function buildNewsHTML(sym){
     if(n.source) metaHtml += '<span class="news-item-src">'+esc(n.source)+'</span>';
     if(n.time)   metaHtml += '<span class="news-item-time">'+esc(n.time)+'</span>';
     if(n.tag)    metaHtml += '<span class="news-item-tag '+tagCls+'">'+tagLbl+'</span>';
-    var url = n.link || '';
-    if(url && !url.startsWith('http')) url = 'https://' + url;
-    return '<div class="news-item" onclick="window.open(\''+url+'\', \'_blank\')">'
+    return '<div class="news-item">'
       +'<div class="news-item-headline">'+esc(n.headline)+'</div>'
       +(metaHtml?'<div class="news-item-meta">'+metaHtml+'</div>':'')
       +'</div>';
@@ -1188,9 +1243,7 @@ function updateFabBadge(){
   var smartOn=['sf-piotroski','sf-netmargin','sf-roe','sf-revgrowth'].some(function(id){
     var el=document.getElementById(id); return el&&el.checked;
   });
-  var hideNanEl=document.getElementById('sf-hide-nan');
-  var hideNanOn = hideNanEl && !hideNanEl.checked; // badge if turned OFF (non-default)
-  fab.classList.toggle('has-filters',!!(activeGrades.size||activeFVs.size||searchQ||smartOn||hideNanOn));
+  fab.classList.toggle('has-filters',!!(activeGrades.size||activeFVs.size||searchQ||smartOn));
 }
 
 function toggleTheme(){
@@ -1235,14 +1288,6 @@ function buildSidebar(){
     }).join('');
     fp.querySelectorAll('.fv-pill').forEach(function(btn){ btn.addEventListener('click',function(){ toggleFV(btn.dataset.fv); }); });
   }
-
-  // Calculate and display unhealthy (NaN fair value) count
-  var nanCount = rawData.filter(isUnhealthy).length;
-  var nc = document.getElementById('unhealthy-nan-cnt');
-  if(nc) nc.textContent = nanCount;
-  var ncm = document.getElementById('unhealthy-nan-cnt-m');
-  if(ncm) ncm.textContent = nanCount;
-
   var ht=document.getElementById('hs-total'); if(ht) ht.textContent=rawData.length;
   var hd=document.getElementById('hs-dv');    if(hd) hd.textContent=fvc['DEEP VALUE']||0;
   var hb=document.getElementById('hs-best');  if(hb) hb.textContent=(gc['A']||0)+(gc['B+']||0);
@@ -1273,9 +1318,6 @@ function buildMobileSheet(){
     var desk=document.getElementById('sf-'+k), mob=document.getElementById('sf-'+k+'-m');
     if(desk&&mob) mob.checked=desk.checked;
   });
-  // Sync unhealthy checkbox
-  var desk=document.getElementById('sf-hide-nan'), mob=document.getElementById('sf-hide-nan-m');
-  if(desk&&mob) mob.checked=desk.checked;
 }
 
 var _filterOpen=false;
@@ -1285,8 +1327,6 @@ function openFilters(){
     var desk=document.getElementById('sf-'+k), mob=document.getElementById('sf-'+k+'-m');
     if(desk&&mob) mob.checked=desk.checked;
   });
-  var desk=document.getElementById('sf-hide-nan'), mob=document.getElementById('sf-hide-nan-m');
-  if(desk&&mob) mob.checked=desk.checked;
   buildMobileSheet();
   document.getElementById('filter-sheet').classList.add('open');
   document.getElementById('filter-overlay').classList.add('visible');
@@ -1339,9 +1379,6 @@ function clearAll(){
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
   updateSelectAllBtn();
-  // Re-enable hide-nan on clear (default = on)
-  var hideNan=document.getElementById('sf-hide-nan'); if(hideNan) hideNan.checked=true;
-  var hideNanM=document.getElementById('sf-hide-nan-m'); if(hideNanM) hideNanM.checked=true;
   document.getElementById('search-inp').value=''; updateSearchClearBtn();
   sortCol='FINAL_RANK'; sortDir='asc'; clearSortHeaders();
   var rankTh=document.querySelector('th[data-col="FINAL_RANK"]'); if(rankTh) rankTh.classList.add('sorted-asc');
@@ -1363,11 +1400,6 @@ function run(){
   var d=rawData;
   if(activeGrades.size) d=d.filter(function(r){ return activeGrades.has(r.GRADE); });
   if(activeFVs.size)    d=d.filter(function(r){ return activeFVs.has(r.FV_GRADE); });
-
-  // Hide unhealthy stocks filter (NaN fair value) — default ON
-  var hideNanEl=document.getElementById('sf-hide-nan');
-  if(hideNanEl && hideNanEl.checked) d=d.filter(function(r){ return !isUnhealthy(r); });
-
   if(document.getElementById('sf-piotroski')&&document.getElementById('sf-piotroski').checked)
     d=d.filter(function(r){ return r.PIOTROSKI_SCORE!=null&&+r.PIOTROSKI_SCORE>=8; });
   if(document.getElementById('sf-netmargin')&&document.getElementById('sf-netmargin').checked)
@@ -1377,7 +1409,6 @@ function run(){
   if(document.getElementById('sf-revgrowth')&&document.getElementById('sf-revgrowth').checked)
     d=d.filter(function(r){ return r.REVENUE_CAGR_3YR_PCT!=null&&+r.REVENUE_CAGR_3YR_PCT>10; });
   if(searchQ){ var q=searchQ; d=d.filter(function(r){ return(r.COMPANY_NAME||'').toLowerCase().includes(q)||(r.SYMBOL||'').toLowerCase().includes(q)||(r.INDUSTRY||'').toLowerCase().includes(q); }); }
-
   var GNUM={A:1,'B+':2,B:3,C:4,D:5,E:6};
   var isNum=!['COMPANY_NAME','SYMBOL','INDUSTRY','GRADE','FV_GRADE','SCREENER_URL'].includes(sortCol);
   var dir=sortDir==='asc'?1:-1;
@@ -1445,11 +1476,14 @@ function showDetail(sym){
   document.getElementById('dp-name').textContent=s.COMPANY_NAME;
   document.getElementById('dp-sub').textContent=s.SYMBOL+' · '+(s.INDUSTRY||'—')+' · '+fmtMC(s.MARKET_CAP_CR);
   var dg=document.getElementById('dp-grade'); dg.textContent=s.GRADE; dg.style.color=gc; dg.style.borderColor=gc;
+
+  // Update both screener links (desktop + mobile)
   var url = s.SCREENER_URL||'#';
   var dpLink=document.getElementById('dp-link');
   var dpLinkMob=document.getElementById('dp-link-mobile');
   if(dpLink) dpLink.href=url;
   if(dpLinkMob) dpLinkMob.href=url;
+
   var ms=[
     {l:'CMP',           v:s.CMP?'₹'+s.CMP.toLocaleString('en-IN'):'—',              c:''},
     {l:'Fair Value',    v:s.COMPOSITE_FAIR_VALUE?'₹'+Math.round(s.COMPOSITE_FAIR_VALUE).toLocaleString('en-IN'):'—', c:''},
@@ -1474,12 +1508,17 @@ function showDetail(sym){
   document.getElementById('dp-metrics').innerHTML=ms.map(function(m){
     return '<div class="dm"><div class="dm-l">'+m.l+'</div><div class="dm-v '+m.c+'">'+m.v+'</div></div>';
   }).join('');
+
+  // Desktop news panel
   var newsScroll=document.getElementById('dp-news-scroll');
   var newsSym=document.getElementById('dp-news-sym');
   if(newsScroll) newsScroll.innerHTML=buildNewsHTML(sym);
   if(newsSym)    newsSym.textContent=sym;
+
+  // Wire mobile "Top News" button
   var newsBtn=document.getElementById('dp-news-btn');
   if(newsBtn){ newsBtn.onclick=function(e){ e.preventDefault(); openNewsSheet(sym); }; }
+
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-overlay').classList.add('visible');
 }
@@ -1575,42 +1614,16 @@ document.getElementById('sheet-apply-btn').addEventListener('click',function(){
     var desk=document.getElementById('sf-'+k), mob=document.getElementById('sf-'+k+'-m');
     if(desk&&mob) desk.checked=mob.checked;
   });
-  // Sync unhealthy checkbox from mobile to desktop
-  var desk=document.getElementById('sf-hide-nan'), mob=document.getElementById('sf-hide-nan-m');
-  if(desk&&mob) desk.checked=mob.checked;
   updateSelectAllBtn(); run(); closeFilters();
 });
 document.querySelectorAll('.sheet-sf-check').forEach(function(cb){
   cb.addEventListener('change',function(){
     var mirrorId=cb.getAttribute('data-mirror');
-    if(mirrorId){
-      var desk=document.getElementById(mirrorId);
-      if(desk) desk.checked=cb.checked;
-    }
+    var desk=document.getElementById(mirrorId);
+    if(desk) desk.checked=cb.checked;
     updateSelectAllBtn(); run();
   });
 });
-
-// Mobile unhealthy checkbox live change
-var mobileNanCb = document.getElementById('sf-hide-nan-m');
-if(mobileNanCb){
-  mobileNanCb.addEventListener('change', function(){
-    var desk=document.getElementById('sf-hide-nan');
-    if(desk) desk.checked=this.checked;
-    run();
-  });
-}
-
-// Desktop unhealthy checkbox change
-var desktopNanCb = document.getElementById('sf-hide-nan');
-if(desktopNanCb){
-  desktopNanCb.addEventListener('change', function(){
-    var mob=document.getElementById('sf-hide-nan-m');
-    if(mob) mob.checked=this.checked;
-    run();
-  });
-}
-
 var sheetClearBtn=document.getElementById('sheet-clear-btn');
 if(sheetClearBtn) sheetClearBtn.addEventListener('click',function(){ clearAll(); closeFilters(); });
 
@@ -1665,9 +1678,10 @@ document.querySelectorAll('#sidebar .sf-check').forEach(function(cb){
 var th=document.querySelector('th[data-col="FINAL_RANK"]'); if(th) th.classList.add('sorted-asc');
 buildSidebar(); buildMobileSheet(); run();
 
-});
+}); // end DOMContentLoaded
 </script>
 
+<!-- ── WELCOME OVERLAY LOGIC ── -->
 <script>
 (function(){
   try {
