@@ -23,7 +23,6 @@ INDEX_URLS = {
     "niftysmallcap500": "https://www.niftyindices.com/IndexConstituent/ind_niftysmallcap500_list.csv",
 }
 
-# Lightweight GNews
 _gnews = GNews(language="en", country="IN", period=f"{NEWS_DAYS}d", max_results=30)
 
 
@@ -57,6 +56,7 @@ def fetch_index_csvs():
             continue
 
     if not frames:
+        print("❌ Failed to fetch index CSVs", flush=True)
         sys.exit(1)
 
     all_stocks = (
@@ -72,7 +72,7 @@ def fetch_index_csvs():
 
 
 # ══════════════════════════════════════════════
-# FETCH NEWS (SMART RETRY + MULTI QUERY)
+# FETCH NEWS
 # ══════════════════════════════════════════════
 
 def fetch_stock(symbol, name):
@@ -96,7 +96,6 @@ def fetch_stock(symbol, name):
             try:
                 tmp = _gnews.get_news(q)
 
-                # 🔥 SMART RETRY: retry if empty or too small
                 if not tmp or len(tmp) < 3:
                     time.sleep(0.4 * (attempt + 1))
                     continue
@@ -105,8 +104,7 @@ def fetch_stock(symbol, name):
                 break
 
             except Exception:
-                if attempt < MAX_RETRIES - 1:
-                    time.sleep(0.4 * (attempt + 1))
+                time.sleep(0.4 * (attempt + 1))
                 continue
 
         if not articles:
@@ -131,7 +129,7 @@ def fetch_stock(symbol, name):
                 "link":      a.get("url", ""),
             })
 
-        time.sleep(0.1)  # anti-throttle
+        time.sleep(0.1)
 
     if not all_rows:
         return pd.DataFrame()
@@ -167,10 +165,11 @@ def trim_and_dedup(df, cutoff):
 # ══════════════════════════════════════════════
 
 def main():
+    print("🚀 STARTED FETCH NEWS", flush=True)
+
     outfile = "multi_stock_news.csv"
     cutoff  = datetime.now(IST) - timedelta(days=NEWS_DAYS)
 
-    # Load existing
     if os.path.exists(outfile):
         existing_df = trim_and_dedup(pd.read_csv(outfile), cutoff)
         seen_keys   = set(zip(existing_df["stockname"], existing_df["news"]))
@@ -181,7 +180,7 @@ def main():
     stocks = fetch_index_csvs()
     total  = len(stocks)
 
-    print(f"\n📋 {total} stocks | workers={MAX_WORKERS}\n")
+    print(f"\n📋 {total} stocks | workers={MAX_WORKERS}\n", flush=True)
 
     accumulated = []
     done = 0
@@ -210,13 +209,12 @@ def main():
                     seen_keys.update(zip(new_rows["stockname"], new_rows["news"]))
                     accumulated.append(new_rows)
                     found += len(new_rows)
-                    print(f"✓ [{done}/{total}] {sym} → {len(new_rows)} new")
+                    print(f"✓ [{done}/{total}] {sym} → {len(new_rows)} new", flush=True)
                 else:
-                    print(f"· [{done}/{total}] {sym} → no new")
+                    print(f"· [{done}/{total}] {sym} → no new", flush=True)
             else:
-                print(f"• [{done}/{total}] {sym} → no news")
+                print(f"• [{done}/{total}] {sym} → no news", flush=True)
 
-            # checkpoint save
             if done % SAVE_EVERY == 0 and accumulated:
                 new_df = pd.concat(accumulated, ignore_index=True)
                 existing_df = trim_and_dedup(
@@ -230,9 +228,8 @@ def main():
                 rate = done / elapsed
                 eta = (total - done) / rate if rate else 0
 
-                print(f"\n💾 Saved | {done}/{total} | ETA {eta/60:.1f} min\n")
+                print(f"\n💾 Saved | {done}/{total} | ETA {eta/60:.1f} min\n", flush=True)
 
-    # final save
     if accumulated:
         new_df = pd.concat(accumulated, ignore_index=True)
         existing_df = trim_and_dedup(
@@ -242,7 +239,7 @@ def main():
 
     existing_df.to_csv(outfile, index=False, encoding="utf-8-sig")
 
-    print(f"\n✅ Done | {found} new rows | total {len(existing_df)}")
+    print(f"\n✅ Done | {found} new rows | total {len(existing_df)}", flush=True)
 
 
 if __name__ == "__main__":
