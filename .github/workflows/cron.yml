@@ -52,7 +52,7 @@ jobs:
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
 
-          elif [ "$HOUR" = "10" ] && [ "$MIN" = "00" ]; then
+          elif [ "$HOUR" = "10" ] && [ "$MIN" <= "30" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
 
           else
