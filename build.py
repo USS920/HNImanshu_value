@@ -555,6 +555,10 @@ def build(deploy=False):
     html = html.replace("%%LAST_UPDATED_PLACEHOLDER%%", now)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    news_map = load_news(NEWS_CSV)
+    news_js  = build_news_js(news_map)
+
+    html = html.replace(NEWS_PLACEHOLDER, news_js)
     OUTPUT.write_text(html, encoding="utf-8")
 
     total = len(data_n500 or []) + len(data_sc250) + len(data_mc250)
