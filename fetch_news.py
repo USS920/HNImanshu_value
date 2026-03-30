@@ -2,21 +2,19 @@ import os
 import sys
 import time
 from datetime import datetime, timezone, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutTimeoutError
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
 import requests
 from io import StringIO
 import pandas as pd
 from gnews import GNews
 
-# ══════════════════════════════════════════════
-# CONFIG
-# ══════════════════════════════════════════════
-
 IST          = timezone(timedelta(hours=5, minutes=30))
-TASK_TIMEOUT = 10
-BATCH_SIZE   = 10
 NEWS_DAYS    = 15
+MAX_WORKERS  = 50        # raise if your network/CPU can handle it; GNews is I/O bound
+MAX_RETRIES  = 2         # per-stock retry attempts before giving up
+TASK_TIMEOUT = 15        # seconds per stock fetch
+SAVE_EVERY   = 50        # write CSV after every N completed stocks (crash safety)
 
 INDEX_URLS = {
     "niftymicrocap250": "https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv",
@@ -24,120 +22,129 @@ INDEX_URLS = {
     "niftysmallcap500": "https://www.niftyindices.com/IndexConstituent/ind_niftysmallcap500_list.csv",
 }
 
-KEYWORDS = [
-    "bulk deal","block deal","order win","order received","rating upgrade",
-    "rating downgrade","acquisition","merger","buyback","dividend","bonus",
-    "split","insider","promoter","pledge","results","profit","loss","revenue",
-    "guidance","qip","rights issue","delisting","fpo","halt","shutdown",
-    "fraud","penalty","sebi","fire","explosion","recall",
-]
-
 
 # ══════════════════════════════════════════════
-# FETCH INDEX STOCKS
+# FETCH STOCKS
 # ══════════════════════════════════════════════
 
 def fetch_index_csvs():
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://www.nseindia.com/",
+        "Referer":    "https://www.nseindia.com/",
     })
 
     frames = []
-
     for url in INDEX_URLS.values():
         try:
             r = session.get(url, timeout=10)
             r.raise_for_status()
-            df = pd.read_csv(StringIO(r.text))
-
+            df   = pd.read_csv(StringIO(r.text))
             cols = df.columns.str.strip()
-            sym_col  = next((c for c in cols if "Symbol" in c or "symbol" in c), None)
-            name_col = next((c for c in cols if "Company Name" in c or "name" in c), None)
-
-            if not sym_col or not name_col:
-                sym_col, name_col = cols[0], cols[1]
-
+            sym_col  = next((c for c in cols if "Symbol"       in c), cols[0])
+            name_col = next((c for c in cols if "Company Name" in c), cols[1])
             df = df[[sym_col, name_col]]
             df.columns = ["symbol", "name"]
-            df = df.dropna()
-
-            frames.append(df)
-
+            frames.append(df.dropna())
         except Exception:
             continue
 
     if not frames:
         sys.exit(1)
 
-    all_stocks = pd.concat(frames, ignore_index=True)
-    all_stocks = all_stocks.drop_duplicates(subset=["symbol"]).reset_index(drop=True)
-
-    all_stocks.to_csv("stocks_nse_indices.csv", index=False, encoding="utf-8-sig")
-
-    return [(row["symbol"], row["name"]) for _, row in all_stocks.iterrows()]
+    all_stocks = (
+        pd.concat(frames, ignore_index=True)
+        .drop_duplicates(subset=["symbol"])
+        .reset_index(drop=True)
+    )
+    return list(zip(all_stocks["symbol"], all_stocks["name"]))
 
 
 # ══════════════════════════════════════════════
-# GOOGLE NEWS FETCH
+# NEWS FETCH  (one call per stock)
 # ══════════════════════════════════════════════
 
-def google_news_for_stock(symbol, name, days=15):
-    articles = None
+# Single shared GNews instance — it carries no mutable per-request state.
+_gnews = GNews(language="en", country="IN", period=f"{NEWS_DAYS}d", max_results=100)
 
-    for _ in range(2):
-        try:
-            g = GNews(
-                language="en",
-                country="IN",
-                period=f"{days}d",
-                max_results=100,
-            )
-            articles = g.get_news(name)
-            break
-        except Exception:
-            time.sleep(1)
 
-    if not articles:
-        return pd.DataFrame()
-
-    rows = []
-
-    name_low  = name.lower().strip()
+def fetch_stock(symbol: str, name: str) -> pd.DataFrame:
+    """
+    Fetch news for one stock. Returns a DataFrame (possibly empty).
+    Retries up to MAX_RETRIES times internally so the pool never needs
+    to resubmit — keeps concurrency high and avoids re-queuing overhead.
+    """
+    name_low  = name.lower()
     sym_low   = symbol.lower()
-    words     = name_low.split()
-    first_two = " ".join(words[:2]) if len(words) >= 2 else name_low
+    first_two = " ".join(name_low.split()[:2])
 
-    key_phrases = [sym_low, name_low, first_two]
-
-    for a in articles:
+    for attempt in range(MAX_RETRIES):
         try:
-            dt = parsedate_to_datetime(a.get("published date", ""))
+            articles = _gnews.get_news(name)
         except Exception:
-            continue
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(0.5 * (attempt + 1))   # brief back-off before retry
+                continue
+            return pd.DataFrame()
 
-        title = str(a.get("title", "")).lower()
+        if not articles:
+            return pd.DataFrame()
 
-        if not any(k in title for k in key_phrases):
-            continue
+        rows = []
+        for a in articles:
+            try:
+                dt = parsedate_to_datetime(a.get("published date", ""))
+            except Exception:
+                continue
 
-        ist = dt.astimezone(IST)
+            title     = str(a.get("title", "")).strip()
+            title_low = title.lower()
 
-        rows.append({
-            "stockname": symbol,
-            "datetime":  ist.strftime("%Y-%m-%d %H:%M IST"),
-            "news":      a.get("title", ""),
-            "link":      a.get("url", ""),
-        })
+            if not (sym_low in title_low or name_low in title_low or first_two in title_low):
+                continue
 
-    if not rows:
-        return pd.DataFrame()
+            rows.append({
+                "stockname": symbol,
+                "datetime":  dt.astimezone(IST).strftime("%Y-%m-%d %H:%M IST"),
+                "news":      title,
+                "link":      a.get("url", ""),
+            })
 
-    df = pd.DataFrame(rows)
-    df.sort_values("datetime", ascending=False, inplace=True)
+        if not rows:
+            return pd.DataFrame()
 
+        df = pd.DataFrame(rows)
+        df.sort_values("datetime", ascending=False, inplace=True)
+        return df
+
+    return pd.DataFrame()
+
+
+# ══════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════
+
+def _parse_dt(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a tz-aware dt_parsed column (modifies a copy)."""
+    df = df.copy()
+    df["dt_parsed"] = pd.to_datetime(
+        df["datetime"].str.replace(" IST", "", regex=False),
+        errors="coerce",
+    ).dt.tz_localize(IST)
     return df
+
+
+def _trim_and_dedup(df: pd.DataFrame, cutoff: datetime) -> pd.DataFrame:
+    """Drop old rows and exact duplicate (stockname, news) pairs."""
+    if "dt_parsed" not in df.columns:
+        df = _parse_dt(df)
+    df = df[df["dt_parsed"] >= cutoff]
+    df = df.drop_duplicates(subset=["stockname", "news"])
+    return df[["stockname", "datetime", "news", "link"]]
+
+
+def _save(df: pd.DataFrame, path: str):
+    df.to_csv(path, index=False, encoding="utf-8-sig")
 
 
 # ══════════════════════════════════════════════
@@ -146,67 +153,96 @@ def google_news_for_stock(symbol, name, days=15):
 
 def main():
     outfile = "multi_stock_news.csv"
+    cutoff  = datetime.now(IST) - timedelta(days=NEWS_DAYS)
 
-    if os.path.exists("stocks_nse_indices.csv"):
-        os.remove("stocks_nse_indices.csv")
-
+    # ── Load + clean existing data once ──────────────────────────────────
     if os.path.exists(outfile):
-        os.remove(outfile)
+        existing_df = _trim_and_dedup(pd.read_csv(outfile), cutoff)
+        seen_keys   = set(zip(existing_df["stockname"], existing_df["news"]))
+    else:
+        existing_df = pd.DataFrame(columns=["stockname", "datetime", "news", "link"])
+        seen_keys   = set()
 
     stocks = fetch_index_csvs()
+    total  = len(stocks)
+    print(f"\n📋 {total} stocks to fetch  |  workers={MAX_WORKERS}  |  cutoff={cutoff:%d %b %Y}\n")
 
-    batches = [stocks[i:i+BATCH_SIZE] for i in range(0, len(stocks), BATCH_SIZE)]
+    # ── Single flat thread pool over all stocks ───────────────────────────
+    # No batching loop — every stock is submitted at once and results are
+    # processed as they complete. This maximises CPU/network utilisation.
+    accumulated  = []          # new rows collected since last save
+    done_count   = 0
+    found_count  = 0
+    failed       = []
 
-    file_exists = False
+    t0 = time.time()
 
-    for batch in batches:
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        future_to_stock = {
+            pool.submit(fetch_stock, sym, name): (sym, name)
+            for sym, name in stocks
+        }
 
-        with ThreadPoolExecutor(max_workers=len(batch)) as pool:
-            futures = {
-                pool.submit(google_news_for_stock, sym, name, NEWS_DAYS): sym
-                for sym, name in batch
-            }
-
-            batch_frames = []
+        for future in as_completed(future_to_stock, timeout=TASK_TIMEOUT * total):
+            sym, name = future_to_stock[future]
+            done_count += 1
 
             try:
-                for future in as_completed(futures, timeout=TASK_TIMEOUT + 10):
-                    try:
-                        df = future.result(timeout=TASK_TIMEOUT)
-                        if df is not None and not df.empty:
-                            batch_frames.append(df)
-                    except Exception:
-                        continue
-            except FutTimeoutError:
-                pass
+                df = future.result(timeout=TASK_TIMEOUT)
+            except Exception:
+                df = pd.DataFrame()
 
-        if not batch_frames:
-            continue
+            if df is not None and not df.empty:
+                # Filter to only genuinely new rows (not already in existing or
+                # accumulated this run) to keep dedup fast without re-scanning
+                # the full DataFrame each time.
+                new_rows = df[
+                    ~df.apply(lambda r: (r["stockname"], r["news"]) in seen_keys, axis=1)
+                ]
+                if not new_rows.empty:
+                    seen_keys.update(zip(new_rows["stockname"], new_rows["news"]))
+                    accumulated.append(new_rows)
+                    found_count += len(new_rows)
+                    print(f"  ✓ [{done_count}/{total}] {sym} → {len(new_rows)} new")
+                else:
+                    print(f"  · [{done_count}/{total}] {sym} → already up-to-date")
+            else:
+                print(f"  • [{done_count}/{total}] {sym} → no news")
+                failed.append(sym)
 
-        batch_all = pd.concat(batch_frames, ignore_index=True)
+            # Periodic save — merge accumulated rows with existing and flush
+            if done_count % SAVE_EVERY == 0 and accumulated:
+                new_df      = pd.concat(accumulated, ignore_index=True)
+                existing_df = _trim_and_dedup(
+                    pd.concat([existing_df, new_df], ignore_index=True), cutoff
+                )
+                _save(existing_df, outfile)
+                accumulated = []
+                elapsed = time.time() - t0
+                rate    = done_count / elapsed
+                eta     = (total - done_count) / rate if rate > 0 else 0
+                print(f"\n  💾 Checkpoint saved  |  {done_count}/{total} done"
+                      f"  |  {found_count} new rows"
+                      f"  |  ETA {eta/60:.1f} min\n")
 
-        # Convert to datetime + make IST-aware
-        batch_all["dt_parsed"] = pd.to_datetime(
-            batch_all["datetime"].str.replace(" IST", ""),
-            errors="coerce"
-        ).dt.tz_localize(IST)
+    # ── Final save ────────────────────────────────────────────────────────
+    if accumulated:
+        new_df      = pd.concat(accumulated, ignore_index=True)
+        existing_df = _trim_and_dedup(
+            pd.concat([existing_df, new_df], ignore_index=True), cutoff
+        )
 
-        cutoff = datetime.now(IST) - timedelta(days=NEWS_DAYS)
+    _save(existing_df, outfile)
 
-        batch_csv = batch_all[
-            batch_all["dt_parsed"] >= cutoff
-        ][["stockname", "datetime", "news", "link"]]
+    elapsed = time.time() - t0
+    print(f"\n✅ Done in {elapsed/60:.1f} min"
+          f"  |  {found_count} new rows added"
+          f"  |  {len(existing_df)} total rows"
+          f"  |  {len(failed)} stocks with no news")
 
-        if batch_csv.empty:
-            continue
-
-        if not file_exists:
-            batch_csv.to_csv(outfile, index=False, encoding="utf-8-sig")
-            file_exists = True
-        else:
-            batch_csv.to_csv(outfile, index=False, header=False, mode="a", encoding="utf-8-sig")
-
-        del batch_frames, batch_all, batch_csv
+    if failed:
+        print(f"   No-news stocks: {', '.join(failed[:20])}"
+              + (" ..." if len(failed) > 20 else ""))
 
 
 if __name__ == "__main__":
