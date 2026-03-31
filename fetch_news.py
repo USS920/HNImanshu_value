@@ -11,10 +11,10 @@ import pandas as pd
 from gnews import GNews
 
 IST          = timezone(timedelta(hours=5, minutes=30))
-NEWS_DAYS    = 15
-MAX_WORKERS  = 20
+NEWS_DAYS    = 7
+MAX_WORKERS  = 10   # reduced: GNews blocks aggressive parallel calls
 MAX_RETRIES  = 2
-TASK_TIMEOUT = 15
+TASK_TIMEOUT = 20
 SAVE_EVERY   = 50
 
 INDEX_URLS = {
@@ -23,7 +23,9 @@ INDEX_URLS = {
     "niftysmallcap500": "https://www.niftyindices.com/IndexConstituent/ind_niftysmallcap500_list.csv",
 }
 
-_gnews = GNews(language="en", country="IN", period=f"{NEWS_DAYS}d", max_results=30)
+# One GNews instance per thread (avoids shared state issues)
+def make_gnews():
+    return GNews(language="en", country="IN", period=f"{NEWS_DAYS}d", max_results=15)
 
 
 # ══════════════════════════════════════════════
@@ -44,14 +46,11 @@ def fetch_index_csvs():
             r.raise_for_status()
             df   = pd.read_csv(StringIO(r.text))
             cols = df.columns.str.strip()
-
             sym_col  = next((c for c in cols if "Symbol" in c), cols[0])
             name_col = next((c for c in cols if "Company Name" in c), cols[1])
-
             df = df[[sym_col, name_col]]
             df.columns = ["symbol", "name"]
             frames.append(df.dropna())
-
         except Exception:
             continue
 
@@ -67,82 +66,112 @@ def fetch_index_csvs():
 
     stocks = list(zip(all_stocks["symbol"], all_stocks["name"]))
     random.shuffle(stocks)
-
     return stocks
 
 
 # ══════════════════════════════════════════════
-# FETCH NEWS
+# FETCH NEWS (1 query per stock, not 3)
 # ══════════════════════════════════════════════
 
 def fetch_stock(symbol, name):
+    gn        = make_gnews()
     name_low  = name.lower()
     sym_low   = symbol.lower()
     first_two = " ".join(name_low.split()[:2])
 
-    queries = [
-        name,
-        f"{symbol} stock",
-        f"{name} news",
-    ]
+    # Use ONE best query — company name is most precise
+    query = name
 
-    all_rows = []
-
-    for q in queries:
-
-        articles = []
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                tmp = _gnews.get_news(q)
-
-                if not tmp or len(tmp) < 3:
-                    time.sleep(0.4 * (attempt + 1))
-                    continue
-
+    articles = []
+    for attempt in range(MAX_RETRIES):
+        try:
+            tmp = gn.get_news(query)
+            if tmp and len(tmp) >= 1:
                 articles = tmp
                 break
+            time.sleep(0.5 * (attempt + 1))
+        except Exception:
+            time.sleep(0.5 * (attempt + 1))
 
-            except Exception:
-                time.sleep(0.4 * (attempt + 1))
-                continue
-
-        if not articles:
-            continue
-
-        for a in articles:
-            try:
-                dt = parsedate_to_datetime(a.get("published date", ""))
-            except Exception:
-                continue
-
-            title     = str(a.get("title", "")).strip()
-            title_low = title.lower()
-
-            if not (sym_low in title_low or name_low in title_low or first_two in title_low):
-                continue
-
-            all_rows.append({
-                "stockname": symbol,
-                "datetime":  dt.astimezone(IST).strftime("%Y-%m-%d %H:%M IST"),
-                "news":      title,
-                "link":      a.get("url", ""),
-            })
-
-        time.sleep(0.1)
-
-    if not all_rows:
+    if not articles:
         return pd.DataFrame()
 
-    df = pd.DataFrame(all_rows)
-    df.drop_duplicates(subset=["news"], inplace=True)
-    df.sort_values("datetime", ascending=False, inplace=True)
+    rows = []
+    for a in articles:
+        try:
+            dt = parsedate_to_datetime(a.get("published date", ""))
+        except Exception:
+            continue
 
+        title     = str(a.get("title", "")).strip()
+        title_low = title.lower()
+        link      = a.get("url", "")
+
+        if not link:
+            continue
+
+        # Relevance filter
+        if not (sym_low in title_low or name_low in title_low or first_two in title_low):
+            continue
+
+        rows.append({
+            "stockname": symbol,
+            "datetime":  dt.astimezone(IST).strftime("%Y-%m-%d %H:%M IST"),
+            "news":      title,
+            "link":      link,
+        })
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df.drop_duplicates(subset=["link"], inplace=True)   # exact link dedup first
+    df.sort_values("datetime", ascending=False, inplace=True)
     return df
 
 
 # ══════════════════════════════════════════════
-# HELPERS
+# FAST DEDUP USING TF-IDF STYLE FINGERPRINT
+# ══════════════════════════════════════════════
+
+def title_fingerprint(title: str) -> frozenset:
+    """
+    Bag-of-words fingerprint: remove stopwords, keep meaningful tokens.
+    Two titles are near-duplicates if they share >= 60% of tokens.
+    """
+    STOPWORDS = {"the","a","an","in","of","to","for","and","or","is","are",
+                 "on","at","with","by","from","its","as","this","that","was",
+                 "be","has","have","had","it","s","co","ltd","limited"}
+    tokens = set(title.lower().split()) - STOPWORDS
+    return frozenset(tokens)
+
+
+def jaccard(fp1: frozenset, fp2: frozenset) -> float:
+    if not fp1 or not fp2:
+        return 0.0
+    return len(fp1 & fp2) / len(fp1 | fp2)
+
+
+def dedup_similar_news(df: pd.DataFrame, threshold=0.6) -> pd.DataFrame:
+    """
+    Fast near-duplicate removal using pre-computed fingerprints.
+    O(n * k) where k = kept titles so far (much faster than O(n²)).
+    """
+    keep_indices = []
+
+    for sym, group in df.groupby("stockname", sort=False):
+        kept_fps = []
+        for idx, row in group.iterrows():
+            fp = title_fingerprint(row["news"])
+            if not any(jaccard(fp, kfp) >= threshold for kfp in kept_fps):
+                kept_fps.append(fp)
+                keep_indices.append(idx)
+
+    return df.loc[keep_indices]
+
+
+# ══════════════════════════════════════════════
+# TRIM + FULL DEDUP PIPELINE
 # ══════════════════════════════════════════════
 
 def parse_dt(df):
@@ -153,53 +182,28 @@ def parse_dt(df):
     return df
 
 
-def are_similar(title1, title2, threshold=0.6):
-    """Return True if two headlines share >= threshold Jaccard similarity."""
-    words1 = set(str(title1).lower().split())
-    words2 = set(str(title2).lower().split())
-    if not words1 or not words2:
-        return False
-    intersection = words1 & words2
-    union = words1 | words2
-    return len(intersection) / len(union) >= threshold
+def trim_and_dedup(df: pd.DataFrame, cutoff) -> pd.DataFrame:
+    if df.empty:
+        return df
 
-
-def dedup_similar_news(df, threshold=0.6):
-    """
-    Remove near-duplicate headlines within the same stockname group.
-    Keeps the first occurrence; drops subsequent similar ones.
-    """
-    keep_indices = []
-    
-    for sym, group in df.groupby("stockname"):
-        kept_titles = []
-        for idx, row in group.iterrows():
-            title = str(row["news"])
-            is_dup = any(are_similar(title, kept, threshold) for kept in kept_titles)
-            if not is_dup:
-                kept_titles.append(title)
-                keep_indices.append(idx)
-    
-    return df.loc[keep_indices]
-
-
-def trim_and_dedup(df, cutoff):
     df = parse_dt(df)
 
     # 1. Time filter
     df = df[df["dt_parsed"] >= cutoff]
 
-    # 2. Remove exact duplicates (safety)
-    df = df.drop_duplicates(subset=["stockname", "news"])
-
-    # 3. Remove similar headlines (your logic)
-    df = dedup_similar_news(df, threshold=0.6)
-
-    # 🔥 4. FINAL: UNIQUE LINK (MOST IMPORTANT)
+    # 2. Exact link dedup (fastest, do first)
     df = df.sort_values("dt_parsed", ascending=False)
     df = df.drop_duplicates(subset=["link"], keep="first")
 
-    return df[["stockname", "datetime", "news", "link"]]
+    # 3. Exact title dedup
+    df = df.drop_duplicates(subset=["stockname", "news"])
+
+    # 4. Near-duplicate title dedup (per stock)
+    df = dedup_similar_news(df, threshold=0.6)
+
+    return df[["stockname", "datetime", "news", "link"]].reset_index(drop=True)
+
+
 # ══════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════
@@ -212,24 +216,23 @@ def main():
 
     if os.path.exists(outfile):
         existing_df = trim_and_dedup(pd.read_csv(outfile), cutoff)
+        seen_links  = set(existing_df["link"].dropna())
         seen_keys   = set(zip(existing_df["stockname"], existing_df["news"]))
     else:
         existing_df = pd.DataFrame(columns=["stockname","datetime","news","link"])
+        seen_links  = set()
         seen_keys   = set()
 
     stocks = fetch_index_csvs()
     total  = len(stocks)
-
     print(f"\n📋 {total} stocks | workers={MAX_WORKERS}\n", flush=True)
 
     accumulated = []
-    done = 0
-    found = 0
-
+    done = found = 0
     t0 = time.time()
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(fetch_stock, s, n):(s,n) for s,n in stocks}
+        futures = {pool.submit(fetch_stock, s, n): (s, n) for s, n in stocks}
 
         for f in as_completed(futures, timeout=TASK_TIMEOUT * total):
             sym, name = futures[f]
@@ -237,15 +240,20 @@ def main():
 
             try:
                 df = f.result(timeout=TASK_TIMEOUT)
-            except:
+            except Exception:
                 df = pd.DataFrame()
 
             if df is not None and not df.empty:
-                new_rows = df[
-                    ~df.apply(lambda r: (r["stockname"], r["news"]) in seen_keys, axis=1)
-                ]
+                # Filter by BOTH link and (stockname, news) to catch all dups
+                mask = df.apply(
+                    lambda r: r["link"] not in seen_links and
+                              (r["stockname"], r["news"]) not in seen_keys,
+                    axis=1
+                )
+                new_rows = df[mask]
 
                 if not new_rows.empty:
+                    seen_links.update(new_rows["link"])
                     seen_keys.update(zip(new_rows["stockname"], new_rows["news"]))
                     accumulated.append(new_rows)
                     found += len(new_rows)
@@ -255,6 +263,7 @@ def main():
             else:
                 print(f"• [{done}/{total}] {sym} → no news", flush=True)
 
+            # Periodic save
             if done % SAVE_EVERY == 0 and accumulated:
                 new_df = pd.concat(accumulated, ignore_index=True)
                 existing_df = trim_and_dedup(
@@ -265,21 +274,20 @@ def main():
                 accumulated = []
 
                 elapsed = time.time() - t0
-                rate = done / elapsed
-                eta = (total - done) / rate if rate else 0
-
+                rate    = done / elapsed
+                eta     = (total - done) / rate if rate else 0
                 print(f"\n💾 Saved | {done}/{total} | ETA {eta/60:.1f} min\n", flush=True)
 
+    # Final save
     if accumulated:
         new_df = pd.concat(accumulated, ignore_index=True)
         existing_df = pd.concat([existing_df, new_df], ignore_index=True)
-    
-    # 🔥 FORCE FULL CLEANUP (entire dataset)
-    existing_df = trim_and_dedup(existing_df, cutoff)
 
+    existing_df = trim_and_dedup(existing_df, cutoff)
     existing_df.to_csv(outfile, index=False, encoding="utf-8-sig")
 
-    print(f"\n✅ Done | {found} new rows | total {len(existing_df)}", flush=True)
+    elapsed = time.time() - t0
+    print(f"\n✅ Done | {found} new rows | total {len(existing_df)} | time {elapsed/60:.1f} min", flush=True)
 
 
 if __name__ == "__main__":
