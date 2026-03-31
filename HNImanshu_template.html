@@ -1386,10 +1386,11 @@ function buildNewsHTML(sym){
     if(n.source) metaHtml += '<span class="news-item-src">'+esc(n.source)+'</span>';
     if(n.time)   metaHtml += '<span class="news-item-time">'+esc(n.time)+'</span>';
     if(n.tag)    metaHtml += '<span class="news-item-tag '+tagCls+'">'+tagLbl+'</span>';
-    return '<div class="news-item">'
+    var link = n.link && n.link !== 'nan' ? n.link : '#';
+    return '<a class="news-item" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;color:inherit;">'
       +'<div class="news-item-headline">'+esc(n.headline)+'</div>'
       +(metaHtml?'<div class="news-item-meta">'+metaHtml+'</div>':'')
-      +'</div>';
+      +'</a>';
   }).join('');
 }
 
