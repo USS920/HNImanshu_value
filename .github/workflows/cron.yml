@@ -5,25 +5,31 @@ permissions:
 
 on:
   schedule:
-    # Every 1 hour from 06:00–08:30 IST
-    #- cron: "30 20 * * *"   # 02:00 IST
-    #- cron: "30 22 * * *"   # 04:00 IST
-    - cron: "30 23 * * *"   # 05:00 IST
-    #- cron: "30 0 * * *"   # 06:00 IST
-    #- cron: "30 1 * * *"   # 07:00 IST
-    - cron: "30 2 * * *"   # 08:00 IST
-    #- cron: "0 3 * * *"    # 08:30 IST
+    # Every hour outside market hours (before 09:15 IST)
+    - cron: "0 0 * * *"    # 05:30 IST
+    - cron: "0 1 * * *"    # 06:30 IST
+    - cron: "0 2 * * *"    # 07:30 IST
+    - cron: "0 3 * * *"    # 08:30 IST
+    - cron: "15 3 * * *"   # 08:45 IST
+    - cron: "30 3 * * *"   # 09:00 IST
 
-    # Every 30 min between 09:15–14:15 IST
-    - cron: "45 3 * * *"      # 09:15 IST
-    - cron: "15,45 4-8 * * *" # 09:45–14:15 IST
+    # Every 15 min during 09:15–15:15 IST
+    - cron: "45 3 * * *"          # 09:15 IST
+    - cron: "0,15,30,45 4 * * *"  # 09:30–10:15 IST
+    - cron: "0,15,30,45 5 * * *"  # 10:30–11:15 IST
+    - cron: "0,15,30,45 6 * * *"  # 11:30–12:15 IST
+    - cron: "0,15,30,45 7 * * *"  # 12:30–13:15 IST
+    - cron: "0,15,30,45 8 * * *"  # 13:30–14:15 IST
+    - cron: "0,15 9 * * *"        # 14:30–15:15 IST
 
-    # Every 2 hours between 16:45–22:45 IST
-    - cron: "15 11 * * *"   # 16:45 IST
-    #- cron: "15 13 * * *"   # 18:45 IST
-    - cron: "15 15 * * *"   # 20:45 IST
-    #- cron: "15 17 * * *"   # 22:45 IST
-    #- cron: "15 18 * * *"   # 23:45 IST
+    # Every hour after block lifts at 17:00 IST
+    - cron: "30 11 * * *"  # 17:00 IST
+    - cron: "30 12 * * *"  # 18:00 IST
+    - cron: "30 13 * * *"  # 19:00 IST
+    - cron: "30 14 * * *"  # 20:00 IST
+    - cron: "30 15 * * *"  # 21:00 IST
+    - cron: "30 16 * * *"  # 22:00 IST
+    - cron: "30 17 * * *"  # 23:00 IST
 
   workflow_dispatch:
     inputs:
@@ -59,29 +65,30 @@ jobs:
         run: |
           IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
           IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
-      
-          echo "Current IST: $IST_HOUR:$IST_MIN"
-      
-          BLOCKED=false
-      
-          if ([ "$IST_HOUR" = "14" ] && [ "$IST_MIN" -ge 30 ]) || \
-             ([ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -gt 5 ]) || \
-             ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 45 ]); then
-            BLOCKED=true
+          IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
+
+          echo "Current IST: $IST_HOUR:$IST_MIN (total=$IST_TOTAL)"
+
+          # ✅ Exception: always allow 14:59–15:05 IST
+          EXCEPT_START=$((14 * 60 + 59))  # 899 min
+          EXCEPT_END=$((15 * 60 + 5))     # 905 min
+
+          if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
+            echo "✅ Exception window (14:59–15:05 IST). Allowing."
+            exit 0
           fi
-      
-          # Exception: 15:00–15:05 is allowed
-          if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 35 ] && [ "$IST_MIN" -gt 29 ]; then
-            echo "Allowed exception window (15:00–15:05)"
-            BLOCKED=false
+
+          # 🚫 Block 15:25–17:00 IST
+          BLOCK_START=$((15 * 60 + 25))  # 925 min
+          BLOCK_END=$((17 * 60 + 0))     # 1020 min
+
+          if [ "$IST_TOTAL" -ge "$BLOCK_START" ] && [ "$IST_TOTAL" -lt "$BLOCK_END" ]; then
+            echo "🚫 Blocked time window (15:25–17:00 IST). Exiting."
+            exit 1
           fi
-      
-          echo "blocked=$BLOCKED" >> $GITHUB_OUTPUT
-      
-          if [ "$BLOCKED" = "true" ]; then
-            echo "Blocked time window. Exiting workflow."
-            exit 1   # ← THIS actually stops the job
-          fi
+
+          echo "✅ Time check passed."
+
       # 🧠 Decide mode (FULL vs LIGHT + FORCE)
       - name: Decide execution mode
         id: timecheck
@@ -128,11 +135,13 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-      
+
+          git stash
           git pull origin main --rebase || echo "pull failed"
-      
+          git stash pop
+
           git add nifty500_valuation.csv niftymicrocap250_valuation.csv niftysmallcap500_valuation.csv multi_stock_news.csv public/index.html
-      
+
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]"
           git push origin main || echo "push failed"
 
@@ -150,7 +159,7 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
         run: |
-          firebase deploy --project hnimanshu --non-interactive || echo "deploy failed"
+          firebase deploy --project hnimanshu --only hosting --non-interactive || echo "deploy failed"
 
       # 📩 Telegram after FULL run
       - name: Telegram Done
