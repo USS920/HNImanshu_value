@@ -153,17 +153,41 @@ def parse_dt(df):
     return df
 
 
-def trim_and_dedup_old(df, cutoff):
-    df = parse_dt(df)
-    df = df[df["dt_parsed"] >= cutoff]
-    df = df.drop_duplicates(subset=["stockname", "news"])
-    return df[["stockname", "datetime", "news", "link"]]
+def are_similar(title1, title2, threshold=0.6):
+    """Return True if two headlines share >= threshold Jaccard similarity."""
+    words1 = set(str(title1).lower().split())
+    words2 = set(str(title2).lower().split())
+    if not words1 or not words2:
+        return False
+    intersection = words1 & words2
+    union = words1 | words2
+    return len(intersection) / len(union) >= threshold
+
+
+def dedup_similar_news(df, threshold=0.6):
+    """
+    Remove near-duplicate headlines within the same stockname group.
+    Keeps the first occurrence; drops subsequent similar ones.
+    """
+    keep_indices = []
+    
+    for sym, group in df.groupby("stockname"):
+        kept_titles = []
+        for idx, row in group.iterrows():
+            title = str(row["news"])
+            is_dup = any(are_similar(title, kept, threshold) for kept in kept_titles)
+            if not is_dup:
+                kept_titles.append(title)
+                keep_indices.append(idx)
+    
+    return df.loc[keep_indices]
+
 
 def trim_and_dedup(df, cutoff):
     df = parse_dt(df)
     df = df[df["dt_parsed"] >= cutoff]
-    df = df.drop_duplicates(subset=["stockname", "news"])  # already there
-    df = df.drop_duplicates(subset=["news"])  # add this — catches cross-symbol dupes
+    df = df.drop_duplicates(subset=["stockname", "news"])   # exact dupes first
+    df = dedup_similar_news(df, threshold=0.6)              # near-dupes second
     return df[["stockname", "datetime", "news", "link"]]
 # ══════════════════════════════════════════════
 # MAIN
