@@ -6,30 +6,28 @@ permissions:
 on:
   schedule:
     # Every hour outside market hours (before 09:15 IST)
-    - cron: "0 0 * * *"    # 05:30 IST
-    - cron: "0 1 * * *"    # 06:30 IST
-    - cron: "0 2 * * *"    # 07:30 IST
-    - cron: "0 3 * * *"    # 08:30 IST
-    - cron: "15 3 * * *"   # 08:45 IST
-    - cron: "30 3 * * *"   # 09:00 IST
+    #- cron: "0 0 * * 1-5"    # 05:30 IST
+    #- cron: "0 1 * * 1-5"    # 06:30 IST
+    #- cron: "0 2 * * 1-5"    # 07:30 IST
+    #- cron: "0 3 * * 1-5"    # 08:30 IST
+    #- cron: "15 3 * * 1-5"   # 08:45 IST
+    #- cron: "30 3 * * 1-5"   # 09:00 IST
 
-    # Every 15 min during 09:15–15:15 IST
-    - cron: "45 3 * * *"          # 09:15 IST
-    - cron: "0,15,30,45 4 * * *"  # 09:30–10:15 IST
-    - cron: "0,15,30,45 5 * * *"  # 10:30–11:15 IST
-    - cron: "0,15,30,45 6 * * *"  # 11:30–12:15 IST
-    - cron: "0,15,30,45 7 * * *"  # 12:30–13:15 IST
-    - cron: "0,15,30,45 8 * * *"  # 13:30–14:15 IST
-    - cron: "0,15 9 * * *"        # 14:30–15:15 IST
+    # Every 30 min during market hours 09:15–15:15 IST
+    - cron: "45 3 * * 1-5"    # 09:15 IST
+    - cron: "45 5 * * 1-5"
+    - cron: "45 7 * * 1-5"
+    - cron: "00 9 * * 1-5"
+    
 
     # Every hour after block lifts at 17:00 IST
-    - cron: "30 11 * * *"  # 17:00 IST
-    - cron: "30 12 * * *"  # 18:00 IST
-    - cron: "30 13 * * *"  # 19:00 IST
-    - cron: "30 14 * * *"  # 20:00 IST
-    - cron: "30 15 * * *"  # 21:00 IST
-    - cron: "30 16 * * *"  # 22:00 IST
-    - cron: "30 17 * * *"  # 23:00 IST
+    #- cron: "30 11 * * 1-5"  # 17:00 IST
+    #- cron: "30 12 * * 1-5"  # 18:00 IST
+    #- cron: "30 13 * * 1-5"  # 19:00 IST
+    #- cron: "30 14 * * 1-5"  # 20:00 IST
+    #- cron: "30 15 * * 1-5"  # 21:00 IST
+    #- cron: "30 16 * * 1-5"  # 22:00 IST
+    #- cron: "30 17 * * 1-5"  # 23:00 IST
 
   workflow_dispatch:
     inputs:
@@ -73,6 +71,13 @@ jobs:
           EXCEPT_START=$((14 * 60 + 59))  # 899 min
           EXCEPT_END=$((15 * 60 + 5))     # 905 min
 
+          DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun  
+
+          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
+            echo "🚫 Weekend. Skipping."
+            exit 1
+          fi
+
           if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
             exit 0
@@ -95,13 +100,37 @@ jobs:
         run: |
           FORCE="${{ github.event.inputs.force_full }}"
           EVENT="${{ github.event_name }}"
+          IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
+          IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
+          IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
 
-          echo "Force: $FORCE | Event: $EVENT"
+          echo "Force: $FORCE | Event: $EVENT | IST_TOTAL: $IST_TOTAL"
 
+          # Force full via manual trigger
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 4 news fetch windows (±7 min tolerance):
+          # 09:15=555, 11:15=675, 13:15=795, 14:30=870
+          NEWS_TIMES="555 675 795 870"
+          RUN_NEWS=false
+
+          for t in $NEWS_TIMES; do
+            DIFF=$(( IST_TOTAL - t ))
+            if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
+              RUN_NEWS=true
+              break
+            fi
+          done
+
+          if [ "$RUN_NEWS" = "true" ]; then
+            echo "mode=news" >> $GITHUB_OUTPUT
+            echo "📰 News fetch window — running fetch_news + build"
           else
             echo "mode=light" >> $GITHUB_OUTPUT
+            echo "⚡ Build only"
           fi
 
       # 🚀 FULL RUN
@@ -120,13 +149,19 @@ jobs:
           python ns500.py || echo "ns500 failed"
           python build.py || echo "build failed"
 
-      # ⚡ LIGHT RUN
-      - name: Light Run (News + Build only)
+      # 📰 NEWS + BUILD RUN (4x during market hours)
+      - name: News + Build Run
+        if: steps.timecheck.outputs.mode == 'news'
+        run: |
+          echo "Running NEWS mode"
+          python -u fetch_news.py || echo "news failed"
+          python build.py || echo "build failed"
+
+      # ⚡ LIGHT RUN (build only)
+      - name: Light Run (Build only)
         if: steps.timecheck.outputs.mode == 'light'
         run: |
           echo "Running LIGHT mode"
-
-          python -u fetch_news.py || echo "news failed"
           python build.py || echo "build failed"
 
       # 💾 Commit changes
