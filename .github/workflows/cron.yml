@@ -50,7 +50,7 @@ jobs:
           if (
               ([ "$IST_HOUR" = "14" ] && [ "$IST_MIN" -ge 30 ]) ||
               ([ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -gt 5 ]) ||
-              ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 30 ])
+              ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 45 ])
              ); then
 
             if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 5 ]; then
