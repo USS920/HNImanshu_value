@@ -57,10 +57,11 @@ jobs:
               echo "Allowed exception window (15:00–15:05)"
             else
               echo "Blocked time window. Exiting workflow."
-              exit 0
+              echo "Blocked window → stopping further execution"
+              CONTINUE="false"
             fi
           fi
-
+          echo "continue=$CONTINUE" >> $GITHUB_OUTPUT
       # 🧠 Decide mode (FULL vs LIGHT + FORCE)
       - name: Decide execution mode
         id: timecheck
