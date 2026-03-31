@@ -272,10 +272,10 @@ def main():
 
     if accumulated:
         new_df = pd.concat(accumulated, ignore_index=True)
-        existing_df = trim_and_dedup(
-            pd.concat([existing_df, new_df], ignore_index=True),
-            cutoff
-        )
+        existing_df = pd.concat([existing_df, new_df], ignore_index=True)
+    
+    # 🔥 FORCE FULL CLEANUP (entire dataset)
+    existing_df = trim_and_dedup(existing_df, cutoff)
 
     existing_df.to_csv(outfile, index=False, encoding="utf-8-sig")
 
