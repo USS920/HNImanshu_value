@@ -450,6 +450,14 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
 
     df = df.copy()
 
+    # ── Deduplicate symbols within this index ──
+    if "SYMBOL" in df.columns:
+        before = len(df)
+        df = df.drop_duplicates(subset=["SYMBOL"], keep="first")
+        dupes = before - len(df)
+        if dupes:
+            print(f"    Dropped {dupes} duplicate symbols")
+
     # NET_DEBT_TO_EBITDA
     if "NET_DEBT_CR" in df.columns and "PL_EBITDA_CR" in df.columns:
         ebitda   = pd.to_numeric(df["PL_EBITDA_CR"], errors="coerce").replace(0, np.nan)
@@ -484,14 +492,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
     needed = ["COMPANY_NAME"] + KEY_COLS
     df = df[[c for c in needed if c in df.columns]]
 
-    # ── Deduplicate symbols within this index ──
-    if "SYMBOL" in df.columns:
-        before = len(df)
-        df = df.drop_duplicates(subset=["SYMBOL"], keep="first")
-        dupes = before - len(df)
-        if dupes:
-            print(f"    Dropped {dupes} duplicate symbols")
-
     df = df.replace([np.inf, -np.inf], None)
     df = df.where(pd.notnull(df), None)
 
@@ -501,10 +501,6 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
                 lambda v: round(float(v), 2) if v is not None else None
             )
 
-    # Deduplicate by SYMBOL — keep first occurrence
-    if "SYMBOL" in df.columns:
-        df = df.drop_duplicates(subset=["SYMBOL"], keep="first")
-      
     return df.to_dict(orient="records")
 
 def inject_news_old(html: str, news_js: str) -> str:
