@@ -41,27 +41,33 @@ jobs:
 
       # 🛑 HARD TIME GATE (EXIT if blocked)
       - name: Time Gate (IST)
+        id: timegate
         run: |
           IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
           IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
-
+      
           echo "Current IST: $IST_HOUR:$IST_MIN"
-
-          if (
-              ([ "$IST_HOUR" = "14" ] && [ "$IST_MIN" -ge 30 ]) ||
-              ([ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -gt 5 ]) ||
-              ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 45 ])
-             ); then
-
-            if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 5 ]; then
-              echo "Allowed exception window (15:00–15:05)"
-            else
-              echo "Blocked time window. Exiting workflow."
-              echo "Blocked window → stopping further execution"
-              CONTINUE="false"
-            fi
+      
+          BLOCKED=false
+      
+          if ([ "$IST_HOUR" = "14" ] && [ "$IST_MIN" -ge 30 ]) || \
+             ([ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -gt 5 ]) || \
+             ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 59 ]); then
+            BLOCKED=true
           fi
-          echo "continue=$CONTINUE" >> $GITHUB_OUTPUT
+      
+          # Exception: 15:00–15:05 is allowed
+          if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 5 ]; then
+            echo "Allowed exception window (15:00–15:05)"
+            BLOCKED=false
+          fi
+      
+          echo "blocked=$BLOCKED" >> $GITHUB_OUTPUT
+      
+          if [ "$BLOCKED" = "true" ]; then
+            echo "Blocked time window. Exiting workflow."
+            exit 1   # ← THIS actually stops the job
+          fi
       # 🧠 Decide mode (FULL vs LIGHT + FORCE)
       - name: Decide execution mode
         id: timecheck
