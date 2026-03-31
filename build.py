@@ -30,7 +30,27 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 import zoneinfo
+import htmlmin
+import rcssmin
+import re
 
+def minify_html_css(html: str) -> str:
+    # Minify inline CSS inside <style>
+    def minify_css(match):
+        css = match.group(1)
+        return "<style>" + rcssmin.cssmin(css) + "</style>"
+
+    html = re.sub(r"<style>(.*?)</style>", minify_css, html, flags=re.DOTALL)
+
+    # Minify HTML
+    html = htmlmin.minify(
+        html,
+        remove_comments=True,
+        remove_empty_space=True,
+        reduce_boolean_attributes=True
+    )
+
+    return html
 # =========================
 # 📁 PATHS
 # =========================
@@ -587,6 +607,7 @@ def build(deploy=False):
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     
+    html = minify_html_css(html)
     OUTPUT.write_text(html, encoding="utf-8")
 
     total = len(data_n500 or []) + len(data_sc250) + len(data_mc250)
