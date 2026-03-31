@@ -185,9 +185,20 @@ def dedup_similar_news(df, threshold=0.6):
 
 def trim_and_dedup(df, cutoff):
     df = parse_dt(df)
+
+    # 1. Time filter
     df = df[df["dt_parsed"] >= cutoff]
-    df = df.drop_duplicates(subset=["stockname", "news"])   # exact dupes first
-    df = dedup_similar_news(df, threshold=0.6)              # near-dupes second
+
+    # 2. Remove exact duplicates (safety)
+    df = df.drop_duplicates(subset=["stockname", "news"])
+
+    # 3. Remove similar headlines (your logic)
+    df = dedup_similar_news(df, threshold=0.6)
+
+    # 🔥 4. FINAL: UNIQUE LINK (MOST IMPORTANT)
+    df = df.sort_values("dt_parsed", ascending=False)
+    df = df.drop_duplicates(subset=["link"], keep="first")
+
     return df[["stockname", "datetime", "news", "link"]]
 # ══════════════════════════════════════════════
 # MAIN
