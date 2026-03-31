@@ -495,7 +495,28 @@ def load_csv(path: Path, name_col: str, label: str, optional=False):
 
     return df.to_dict(orient="records")
 
-
+def inject_news_old(html: str, news_js: str) -> str:
+    # Always use regex — don't rely on exact string match
+    pattern = re.compile(
+        r"//\s*──\s*NEWS DATA\s*──.*?var\s+NEWS_DATA\s*=\s*\{.*?\};",
+        re.DOTALL
+    )
+    if pattern.search(html):
+        return pattern.sub(news_js, html)
+    else:
+        print("  [WARN] NEWS_DATA placeholder not found in template — news not injected")
+        return html
+def inject_news(html: str, news_js: str) -> str:
+    """Always inject NEWS_DATA via regex — immune to whitespace/encoding mismatches."""
+    pattern = re.compile(
+        r'//\s*[─\-─]+\s*NEWS DATA\s*[─\-─]+.*?var\s+NEWS_DATA\s*=\s*\{.*?\};',
+        re.DOTALL
+    )
+    if pattern.search(html):
+        return pattern.sub(news_js, html)
+    # fallback: append before closing </script>
+    print("  [WARN] NEWS_DATA block not found via regex — appending before </script>")
+    return html.replace('</script>', news_js + '\n</script>', 1)
 # =========================
 # 🏗 BUILD
 # =========================
@@ -550,6 +571,7 @@ def build(deploy=False):
             html,
             flags=re.DOTALL
         )
+    html = inject_news(html, news_js)
 
     # ── Timestamp ──
     now = datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y\n%I:%M %p IST")
