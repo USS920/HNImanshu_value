@@ -153,13 +153,18 @@ def parse_dt(df):
     return df
 
 
-def trim_and_dedup(df, cutoff):
+def trim_and_dedup_old(df, cutoff):
     df = parse_dt(df)
     df = df[df["dt_parsed"] >= cutoff]
     df = df.drop_duplicates(subset=["stockname", "news"])
     return df[["stockname", "datetime", "news", "link"]]
 
-
+def trim_and_dedup(df, cutoff):
+    df = parse_dt(df)
+    df = df[df["dt_parsed"] >= cutoff]
+    df = df.drop_duplicates(subset=["stockname", "news"])  # already there
+    df = df.drop_duplicates(subset=["news"])  # add this — catches cross-symbol dupes
+    return df[["stockname", "datetime", "news", "link"]]
 # ══════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════
