@@ -128,14 +128,12 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-
-          git stash || echo "nothing to stash"
-          git pull origin main || echo "pull failed"
-          git stash pop || echo "nothing to pop"
-
+      
+          git pull origin main --rebase || echo "pull failed"
+      
           git add nifty500_valuation.csv niftymicrocap250_valuation.csv niftysmallcap500_valuation.csv multi_stock_news.csv public/index.html
-
-          git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
+      
+          git diff --cached --quiet || git commit -m "Auto-update data [skip ci]"
           git push origin main || echo "push failed"
 
       # 🔐 Setup Firebase credentials
