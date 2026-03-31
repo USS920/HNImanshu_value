@@ -57,7 +57,7 @@ jobs:
           fi
       
           # Exception: 15:00–15:05 is allowed
-          if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 5 ]; then
+          if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 35 ] && [ "$IST_MIN" -gt 29 ]; then
             echo "Allowed exception window (15:00–15:05)"
             BLOCKED=false
           fi
@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "Running LIGHT mode"
 
-          #python -u fetch_news.py || echo "news failed"
+          python -u fetch_news.py || echo "news failed"
           python build.py || echo "build failed"
 
       # 💾 Commit changes
