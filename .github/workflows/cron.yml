@@ -5,11 +5,25 @@ permissions:
 
 on:
   schedule:
-    # Every 30 min between 09:15–14:30 IST
-    - cron: "45 3 * * *"
-    - cron: "15,45 4-8 * * *"
-    - cron: "0 9 * * *"
-    - cron: "30 9 * * *"   # ✅ 15:00 IST (needed for exception window)
+    # Every 1 hour from 06:00–08:30 IST
+    - cron: "30 20 * * *"   # 02:00 IST
+    - cron: "30 22 * * *"   # 04:00 IST
+    - cron: "30 23 * * *"   # 05:00 IST
+    - cron: "30 0 * * *"   # 06:00 IST
+    - cron: "30 1 * * *"   # 07:00 IST
+    - cron: "30 2 * * *"   # 08:00 IST
+    - cron: "0 3 * * *"    # 08:30 IST
+
+    # Every 30 min between 09:15–14:15 IST
+    - cron: "45 3 * * *"      # 09:15 IST
+    - cron: "15,45 4-8 * * *" # 09:45–14:15 IST
+
+    # Every 2 hours between 16:45–22:45 IST
+    - cron: "15 11 * * *"   # 16:45 IST
+    - cron: "15 13 * * *"   # 18:45 IST
+    - cron: "15 15 * * *"   # 20:45 IST
+    - cron: "15 17 * * *"   # 22:45 IST
+    - cron: "15 18 * * *"   # 23:45 IST
 
   workflow_dispatch:
     inputs:
@@ -105,7 +119,7 @@ jobs:
         run: |
           echo "Running LIGHT mode"
 
-          python -u fetch_news.py || echo "news failed"
+          #python -u fetch_news.py || echo "news failed"
           python build.py || echo "build failed"
 
       # 💾 Commit changes
