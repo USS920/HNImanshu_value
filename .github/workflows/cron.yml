@@ -9,6 +9,8 @@ on:
     - cron: "45 3 * * *"
     - cron: "15,45 4-8 * * *"
     - cron: "0 9 * * *"
+    - cron: "30 9 * * *"   # ✅ 15:00 IST (needed for exception window)
+
   workflow_dispatch:
     inputs:
       force_full:
@@ -37,24 +39,39 @@ jobs:
           pip install -r requirements.txt
           pip install requests pandas numpy beautifulsoup4 lxml tqdm gnews
 
+      # 🛑 HARD TIME GATE (EXIT if blocked)
+      - name: Time Gate (IST)
+        run: |
+          IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
+          IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
+
+          echo "Current IST: $IST_HOUR:$IST_MIN"
+
+          if (
+              ([ "$IST_HOUR" = "14" ] && [ "$IST_MIN" -ge 30 ]) ||
+              ([ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -gt 5 ]) ||
+              ([ "$IST_HOUR" = "16" ] && [ "$IST_MIN" -lt 30 ])
+             ); then
+
+            if [ "$IST_HOUR" = "15" ] && [ "$IST_MIN" -le 5 ]; then
+              echo "Allowed exception window (15:00–15:05)"
+            else
+              echo "Blocked time window. Exiting workflow."
+              exit 0
+            fi
+          fi
+
       # 🧠 Decide mode (FULL vs LIGHT + FORCE)
       - name: Decide execution mode
         id: timecheck
         run: |
-          HOUR=$(date -u +"%H")
-          MIN=$(date -u +"%M")
-
           FORCE="${{ github.event.inputs.force_full }}"
           EVENT="${{ github.event_name }}"
 
-          echo "Current UTC: $HOUR:$MIN | Force: $FORCE | Event: $EVENT"
+          echo "Force: $FORCE | Event: $EVENT"
 
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
-
-          elif [ "$HOUR" = "10" ]; then
-            echo "mode=full" >> $GITHUB_OUTPUT
-
           else
             echo "mode=light" >> $GITHUB_OUTPUT
           fi
@@ -68,7 +85,7 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
           -d chat_id="-1002683944312" \
           -d text="Full update started..."
-          
+
           #python -u fetch_news.py || echo "news failed"
           python n500.py || echo "n500 failed"
           python nm250.py || echo "nm250 failed"
@@ -81,7 +98,7 @@ jobs:
         run: |
           echo "Running LIGHT mode"
 
-          #python -u fetch_news.py || echo "news failed"
+          python -u fetch_news.py || echo "news failed"
           python build.py || echo "build failed"
 
       # 💾 Commit changes
@@ -100,7 +117,7 @@ jobs:
           git diff --cached --quiet || git commit -m "Auto-update data [skip ci]" || echo "commit skipped"
           git push origin main || echo "push failed"
 
-      # 🔐 Setup Firebase credentials (WORKING METHOD)
+      # 🔐 Setup Firebase credentials
       - name: Setup Firebase credentials
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS }}' > serviceAccount.json
@@ -109,7 +126,7 @@ jobs:
       - name: Install Firebase
         run: npm install -g firebase-tools
 
-      # 🚀 Deploy (ENV-based auth)
+      # 🚀 Deploy
       - name: Deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
