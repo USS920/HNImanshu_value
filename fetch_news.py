@@ -215,9 +215,9 @@ def main():
     cutoff  = datetime.now(IST) - timedelta(days=NEWS_DAYS)
     
     # Delete existing CSV and start fresh
-    if os.path.exists(outfile):
-        os.remove(outfile)
-        print("🗑️ Deleted existing CSV, starting fresh", flush=True)
+    #if os.path.exists(outfile):
+        #os.remove(outfile)
+        #print("🗑️ Deleted existing CSV, starting fresh", flush=True)
 
     if os.path.exists(outfile):
         existing_df = trim_and_dedup(pd.read_csv(outfile), cutoff)
