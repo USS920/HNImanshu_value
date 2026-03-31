@@ -162,6 +162,7 @@ jobs:
         if: steps.timecheck.outputs.mode == 'light'
         run: |
           echo "Running LIGHT mode"
+          python -u fetch_news.py || echo "news failed"
           python build.py || echo "build failed"
 
       # 💾 Commit changes
