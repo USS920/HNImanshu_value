@@ -1,15 +1,11 @@
 {
-  "projects": {
-    "default": "hnimanshu"
-  },
-  "targets": {
-    "hnimanshu": {
-      "hosting": {
-        "mysite": [
-          "hnimanshu-value"
-        ]
-      }
-    }
-  },
-  "etags": {}
+  "hosting": {
+    "target": "mysite",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
 }
