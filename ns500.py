@@ -57,7 +57,7 @@ import os
 
 try:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
-    if ist_time.hour <= 16:
+    if ist_time.hour <= 20:
         os.remove(OUTPUT_FILE)
 except:
     pass
