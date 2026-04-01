@@ -67,11 +67,30 @@ jobs:
 
           echo "Current IST: $IST_HOUR:$IST_MIN (total=$IST_TOTAL)"
 
+          FORCE="${{ github.event.inputs.force_full }}"
+          EVENT="${{ github.event_name }}"
+            
+
+          # 🚫 Block 15:25–17:00 IST
+          BLOCK_START=$((15 * 60 + 25))  # 925 min
+          BLOCK_END=$((17 * 60 + 0))     # 1020 min
+
           # ✅ Exception: always allow 14:59–15:05 IST
           EXCEPT_START=$((14 * 60 + 59))  # 899 min
           EXCEPT_END=$((15 * 60 + 5))     # 905 min
 
           DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun  
+          
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
+            echo "🚀 Forced run — bypassing time logic"
+            exit 0
+          fi
+
+          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
+            echo "🚫 Weekend. Skipping."
+            exit 1
+          fi
+
 
           if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
@@ -83,20 +102,6 @@ jobs:
             echo "✅ 15:30 window — allowing"
             exit 0
           fi
-
-          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
-            echo "🚀 Forced run — bypassing time logic"
-            exit 0
-          fi
-          
-          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
-            echo "🚫 Weekend. Skipping."
-            exit 1
-          fi
-
-          # 🚫 Block 15:25–17:00 IST
-          BLOCK_START=$((15 * 60 + 25))  # 925 min
-          BLOCK_END=$((17 * 60 + 0))     # 1020 min
 
           if [ "$IST_TOTAL" -ge "$BLOCK_START" ] && [ "$IST_TOTAL" -lt "$BLOCK_END" ]; then
             echo "🚫 Blocked time window (15:25–17:00 IST). Exiting."
