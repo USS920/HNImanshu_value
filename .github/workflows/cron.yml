@@ -64,13 +64,14 @@ jobs:
           IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
           IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
           IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
-
+          
+          DAY=$(TZ="Asia/Kolkata" date +"%u")  # ✅ define early
+          
           echo "Current IST: $IST_HOUR:$IST_MIN (total=$IST_TOTAL)"
-
+          
           FORCE="${{ github.event.inputs.force_full }}"
           EVENT="${{ github.event_name }}"
             
-
           # 🚫 Block 15:25–17:00 IST
           BLOCK_START=$((15 * 60 + 25))  # 925 min
           BLOCK_END=$((17 * 60 + 0))     # 1020 min
@@ -78,6 +79,8 @@ jobs:
           # ✅ Exception: always allow 14:59–15:05 IST
           EXCEPT_START=$((14 * 60 + 59))  # 899 min
           EXCEPT_END=$((15 * 60 + 5))     # 905 min
+
+          TARGET=$((15 * 60 + 30))
 
           DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun  
           
@@ -96,7 +99,6 @@ jobs:
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
             exit 0
           fi
-          TARGET=$((15 * 60 + 30))
           
           if [ "$IST_TOTAL" -ge $((TARGET - 5)) ] && [ "$IST_TOTAL" -le $((TARGET + 5)) ]; then
             echo "✅ 15:30 window — allowing"
