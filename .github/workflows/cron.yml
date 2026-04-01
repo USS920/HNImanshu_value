@@ -73,14 +73,19 @@ jobs:
 
           DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun  
 
-          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
-            echo "🚫 Weekend. Skipping."
-            exit 1
-          fi
-
           if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
             exit 0
+          fi
+
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
+            echo "🚀 Forced run — bypassing time logic"
+            exit 0
+          fi
+          
+          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
+            echo "🚫 Weekend. Skipping."
+            exit 1
           fi
 
           # 🚫 Block 15:25–17:00 IST
