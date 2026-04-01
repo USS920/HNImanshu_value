@@ -77,6 +77,12 @@ jobs:
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
             exit 0
           fi
+          TARGET=$((15 * 60 + 30))
+          
+          if [ "$IST_TOTAL" -ge $((TARGET - 5)) ] && [ "$IST_TOTAL" -le $((TARGET + 5)) ]; then
+            echo "✅ 15:30 window — allowing"
+            exit 0
+          fi
 
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "🚀 Forced run — bypassing time logic"
