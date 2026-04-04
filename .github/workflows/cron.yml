@@ -5,29 +5,11 @@ permissions:
 
 on:
   schedule:
-    # Every hour outside market hours (before 09:15 IST)
-    #- cron: "0 0 * * 1-5"    # 05:30 IST
-    #- cron: "0 1 * * 1-5"    # 06:30 IST
-    #- cron: "0 2 * * 1-5"    # 07:30 IST
-    #- cron: "0 3 * * 1-5"    # 08:30 IST
-    #- cron: "15 3 * * 1-5"   # 08:45 IST
-    #- cron: "30 3 * * 1-5"   # 09:00 IST
-
-    # Every 30 min during market hours 09:15–15:15 IST
     - cron: "45 3 * * 1-5"    # 09:15 IST
     - cron: "45 5 * * 1-5"
     - cron: "45 7 * * 1-5"
     - cron: "00 9 * * 1-5"
     
-
-    # Every hour after block lifts at 17:00 IST
-    #- cron: "30 11 * * 1-5"  # 17:00 IST
-    #- cron: "30 12 * * 1-5"  # 18:00 IST
-    #- cron: "30 13 * * 1-5"  # 19:00 IST
-    #- cron: "30 14 * * 1-5"  # 20:00 IST
-    #- cron: "30 15 * * 1-5"  # 21:00 IST
-    #- cron: "30 16 * * 1-5"  # 22:00 IST
-    #- cron: "30 17 * * 1-5"  # 23:00 IST
 
   workflow_dispatch:
     inputs:
@@ -64,14 +46,14 @@ jobs:
           IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
           IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
           IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
-          
-          DAY=$(TZ="Asia/Kolkata" date +"%u")  # ✅ define early
-          
+
+          DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun
+
           echo "Current IST: $IST_HOUR:$IST_MIN (total=$IST_TOTAL)"
-          
+
           FORCE="${{ github.event.inputs.force_full }}"
           EVENT="${{ github.event_name }}"
-            
+
           # 🚫 Block 15:25–17:00 IST
           BLOCK_START=$((15 * 60 + 25))  # 925 min
           BLOCK_END=$((17 * 60 + 0))     # 1020 min
@@ -80,10 +62,10 @@ jobs:
           EXCEPT_START=$((14 * 60 + 59))  # 899 min
           EXCEPT_END=$((15 * 60 + 5))     # 905 min
 
-          TARGET=$((15 * 60 + 30))
+          # ✅ Exception: always allow 15:25–15:35 IST (covers 15:30 full run)
+          EXCEPT2_START=$((15 * 60 + 25))  # 925 min
+          EXCEPT2_END=$((15 * 60 + 35))    # 935 min
 
-          DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun  
-          
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "🚀 Forced run — bypassing time logic"
             exit 0
@@ -94,14 +76,13 @@ jobs:
             exit 1
           fi
 
-
           if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
             echo "✅ Exception window (14:59–15:05 IST). Allowing."
             exit 0
           fi
-          
-          if [ "$IST_TOTAL" -ge $((TARGET - 5)) ] && [ "$IST_TOTAL" -le $((TARGET + 5)) ]; then
-            echo "✅ 15:30 window — allowing"
+
+          if [ "$IST_TOTAL" -ge "$EXCEPT2_START" ] && [ "$IST_TOTAL" -le "$EXCEPT2_END" ]; then
+            echo "✅ Exception window (15:25–15:35 IST). Allowing."
             exit 0
           fi
 
@@ -112,7 +93,7 @@ jobs:
 
           echo "✅ Time check passed."
 
-      # 🧠 Decide mode (FULL vs LIGHT + FORCE)
+      # 🧠 Decide mode (FULL vs LIGHT)
       - name: Decide execution mode
         id: timecheck
         run: |
@@ -130,25 +111,25 @@ jobs:
             exit 0
           fi
 
-          # 4 news fetch windows (±7 min tolerance):
-          # 09:15=555, 11:15=675, 13:15=795, 14:30=870
-          NEWS_TIMES="555 675 795 870"
-          RUN_NEWS=false
+          # Full run windows (±7 min tolerance):
+          # 09:15=555, 11:15=675, 13:15=795, 14:30=870, 15:30=930
+          FULL_TIMES="555 675 795 870 930"
+          RUN_FULL=false
 
-          for t in $NEWS_TIMES; do
+          for t in $FULL_TIMES; do
             DIFF=$(( IST_TOTAL - t ))
             if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
-              RUN_NEWS=true
+              RUN_FULL=true
               break
             fi
           done
 
-          if [ "$RUN_NEWS" = "true" ]; then
-            echo "mode=news" >> $GITHUB_OUTPUT
-            echo "📰 News fetch window — running fetch_news + build"
+          if [ "$RUN_FULL" = "true" ]; then
+            echo "mode=full" >> $GITHUB_OUTPUT
+            echo "🚀 Full run window"
           else
             echo "mode=light" >> $GITHUB_OUTPUT
-            echo "⚡ Build only"
+            echo "⚡ Light run window"
           fi
 
       # 🚀 FULL RUN
@@ -167,15 +148,7 @@ jobs:
           python ns500.py || echo "ns500 failed"
           python build.py || echo "build failed"
 
-      # 📰 NEWS + BUILD RUN (4x during market hours)
-      - name: News + Build Run
-        if: steps.timecheck.outputs.mode == 'news'
-        run: |
-          echo "Running NEWS mode"
-          python -u fetch_news.py || echo "news failed"
-          python build.py || echo "build failed"
-
-      # ⚡ LIGHT RUN (build only)
+      # ⚡ LIGHT RUN (build + news only)
       - name: Light Run (Build only)
         if: steps.timecheck.outputs.mode == 'light'
         run: |
