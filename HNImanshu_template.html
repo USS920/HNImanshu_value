@@ -1324,18 +1324,11 @@ let activeGrades=new Set(), activeFVs=new Set();
 let searchQ='', sortCol='FINAL_RANK', sortDir='asc', selectedSym=null;
 
 // ── HIDE NaN FAIR VAL STATE ──
-// Default = true (always on). Persisted in localStorage. Immune to clearAll.
-var HIDE_NAN_KEY = 'hnimanshu_hide_nan_fv';
-var hideNanFV = true; // always-on default
-try {
-  var stored = localStorage.getItem(HIDE_NAN_KEY);
-  if (stored !== null) hideNanFV = stored === 'true';
-  // On first visit (no stored value), persist the default=true immediately
-  else localStorage.setItem(HIDE_NAN_KEY, 'true');
-} catch(e) {}
+// CHANGE 1: Always resets to TRUE on every page load, refresh, or idle>10min. Not persisted.
+var hideNanFV = true;
 
 function saveHideNan() {
-  try { localStorage.setItem(HIDE_NAN_KEY, hideNanFV ? 'true' : 'false'); } catch(e) {}
+  // Intentionally no-op: state resets to true on every page load.
 }
 
 function syncHideNanUI() {
@@ -1426,6 +1419,7 @@ function updateSearchClearBtn(){
 }
 
 function buildSidebar(){
+  // Build structure from rawData (all available options). Counts update live via updateSidebarCounts().
   var gc={},fvc={};
   rawData.forEach(function(d){ gc[d.GRADE]=(gc[d.GRADE]||0)+1; fvc[d.FV_GRADE]=(fvc[d.FV_GRADE]||0)+1; });
   var grades=['A','B+','B','C','D','E'].filter(function(g){return gc[g];});
@@ -1449,6 +1443,28 @@ function buildSidebar(){
   var hb=document.getElementById('hs-best');  if(hb) hb.textContent=(gc['A']||0)+(gc['B+']||0);
   var sc=document.getElementById('sb-clear-btn');
   if(sc){ sc.onclick=null; sc.addEventListener('click',function(){ clearAll(); }); }
+}
+
+// ── CHANGE 2: Update sidebar/sheet pill counts to reflect currently visible (filtered) data ──
+function updateSidebarCounts(filteredData){
+  var gc={},fvc={};
+  filteredData.forEach(function(d){ gc[d.GRADE]=(gc[d.GRADE]||0)+1; fvc[d.FV_GRADE]=(fvc[d.FV_GRADE]||0)+1; });
+  // Grade pills (desktop sidebar)
+  document.querySelectorAll('.grade-pill').forEach(function(btn){
+    var cntEl=btn.querySelector('.cnt'); if(cntEl) cntEl.textContent=(gc[btn.dataset.g]||0);
+  });
+  // FV pills (desktop sidebar)
+  document.querySelectorAll('.fv-pill').forEach(function(btn){
+    var cntEl=btn.querySelector('.cnt'); if(cntEl) cntEl.textContent=(fvc[btn.dataset.fv]||0);
+  });
+  // Grade buttons (mobile sheet)
+  document.querySelectorAll('.sheet-grade-btn').forEach(function(btn){
+    var cntEl=btn.querySelector('.cnt'); if(cntEl) cntEl.textContent=(gc[btn.dataset.g]||0);
+  });
+  // FV buttons (mobile sheet)
+  document.querySelectorAll('.sheet-fv-btn').forEach(function(btn){
+    var cntEl=btn.querySelector('.cnt'); if(cntEl) cntEl.textContent=(fvc[btn.dataset.fv]||0);
+  });
 }
 
 function buildMobileSheet(){
@@ -1542,7 +1558,7 @@ function toggleFV(f){
 function handleSearch(v){ searchQ=v.toLowerCase(); updateSearchClearBtn(); run(); }
 
 function clearAll(){
-  // NOTE: hideNanFV is intentionally NOT reset here — it persists across clear-all
+  // NOTE: hideNanFV is intentionally NOT reset here — it persists within the session
   activeGrades.clear(); activeFVs.clear(); searchQ=''; selectedSym=null;
   document.querySelectorAll('.sf-check').forEach(function(cb){ cb.checked=false; });
   updateSelectAllBtn();
@@ -1593,6 +1609,7 @@ function run(){
   var rcs=document.getElementById('rc-span'); if(rcs) rcs.textContent=d.length+' / '+rawData.length;
   var mcs=document.getElementById('mc-span'); if(mcs) mcs.textContent=d.length;
   renderTable(d);
+  updateSidebarCounts(d);  // CHANGE 2: update pill counts to reflect filtered result
   updateFabBadge();
 }
 
@@ -1883,7 +1900,7 @@ if(sheetSelectAllBtn){
   });
 }
 
-// Initialize hide-nan UI state from persisted value (always-on default)
+// Initialize hide-nan UI state (always true on load)
 syncHideNanUI();
 updateHideNanCount();
 
