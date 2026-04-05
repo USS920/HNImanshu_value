@@ -73,7 +73,7 @@ jobs:
 
           if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
             echo "🚫 Weekend. Skipping."
-            exit 0
+            exit 1
           fi
 
           if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
