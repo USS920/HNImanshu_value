@@ -9,6 +9,22 @@ Smart download logic:
   - Auto-redownload if CSV is older than REFRESH_DAYS (default 30)
   - Graceful Ctrl+C: saves whatever was collected before exit
 
+FIXES vs previous version:
+  1. fv_ev_ebitda  — caps multiple when OTHER_INCOME_TO_PBT > 30%
+                     (prevents asset-sale ROE inflating EV/EBITDA for
+                      infra/EPC companies like ASHOKA, IRB, PNC etc.)
+  2. fv_ev_ebitda  — adds EPC/Construction/Infrastructure sector cap at 12x
+  3. fv_dcf / fv_dcf_2stage / fv_fcf_yield / fv_owner_earnings
+                   — skips when FCF_YIELD > 20% (asset-sale distortion)
+  4. fv_roe_pb     — caps ROE at 15 when OTHER_INCOME_TO_PBT > 30%
+  5. get_wacc      — quality discount only applies when other income is low
+  6. compute_composite
+                   — OTHER_INCOME_TO_PBT > 50% caps FV at 3x book value
+                   — effective_roe used for growth-stock classification
+                     (prevents asset-sale ROE from triggering growth path)
+  7. No impact on genuine quality compounders (HDFC Bank, TCS, Asian Paints,
+     Britannia etc.) whose other-income-to-PBT stays below 30%.
+
 Usage:
   pip install requests pandas beautifulsoup4 lxml tqdm
   python nifty500_pipeline.py                   # smart run
@@ -28,6 +44,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from datetime import datetime as dt
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -59,11 +76,9 @@ import os
 
 try:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
-
     if ist_time.hour <= 20:
         os.remove(OUTPUT_FILE)
         print(f"File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
-
 except Exception as e:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
     print(f"Delete failed at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST | Error: {e}")
@@ -90,16 +105,24 @@ EQUITY_PREMIUM  = 0.055
 
 # Sectors where standard PE/EV scoring is wrong
 FINANCIAL_SECTORS = ["BANK", "NBFC", "INSURANCE", "FINANCE", "FINANCIAL"]
+
+# Sectors that get cyclical penalties in scoring
 CYCLICAL_SECTORS = [
     "REAL ESTATE", "METALS", "MINING",
     "CEMENT", "OIL & GAS", "POWER",
     "INFRASTRUCTURE", "COMMODITIES"
 ]
+
+# ── NEW: EPC/Construction sectors that get EV/EBITDA multiple hard-capped ────
+EPC_SECTORS = [
+    "INFRASTRUCTURE", "CONSTRUCTION", "EPC",
+    "ENGINEERING", "ROADS", "HIGHWAYS", "CIVIL"
+]
+
 SCORE_METRICS_FINANCIAL = [
-    # Replace PE/EV with PB and NIM-proxy metrics for financials
     ("PB",                   True,  [0,0.5,1,1.5,2,3,5],      [10,9,7,5,3,1,0]),
     ("ROE_PCT",              False, [25,20,15,12,8,5],         [10,8,6,4,2,0]),
-    ("DEBT_TO_EQUITY",       True,  [0,3,6,10,15,20],          [10,8,6,4,2,0]),  # banks carry structural leverage
+    ("DEBT_TO_EQUITY",       True,  [0,3,6,10,15,20],          [10,8,6,4,2,0]),
     ("NET_MARGIN_CALC_PCT",  False, [30,20,15,10,5],           [10,8,6,4,2,0]),
     ("REVENUE_CAGR_3YR",     False, [25,20,15,10,5,0],         [10,8,6,4,2,0]),
     ("PAT_CAGR_3YR",         False, [30,20,15,10,5,0],         [10,9,7,5,3,1,0]),
@@ -110,56 +133,8 @@ SCORE_METRICS_FINANCIAL = [
     ("EPS_CAGR_3YR",         False, [30,20,15,10,5,0],         [10,8,6,4,2,0]),
 ]
 
-def get_wacc(row) -> float:
-    """
-    Stock-specific WACC:
-      Base 12% + debt premium + cyclical premium - quality discount
-    """
-    base = WACC   # 0.12
-
-    de     = _safe(row.get("DEBT_TO_EQUITY")) or 0
-    sector = str(row.get("SECTOR", "")).upper()
-    roe    = _safe(row.get("ROE_PCT")) or 0
-    ic     = _safe(row.get("INTEREST_COVERAGE")) or 0
-
-    # Debt premium
-    if de > 2.0:   base += 0.03
-    elif de > 1.0: base += 0.02
-    elif de > 0.5: base += 0.01
-
-    # Cyclical sector premium
-    if any(c in sector for c in CYCLICAL_SECTORS):
-        base += 0.015
-
-    # Quality discount — consistent high-ROE, well-covered interest
-    if roe > 25 and ic > 5 and de < 0.5:
-        base -= 0.01
-
-    return round(min(max(base, 0.10), 0.18), 4)   # clamp 10–18%
 # ══════════════════════════════════════════════════════════════════════════════
-# STEP 1 — NSE NIFTY 500
-# ══════════════════════════════════════════════════════════════════════════════
-
-def fetch_nifty500() -> pd.DataFrame:
-    log.info("Fetching Nifty 500 from NSE archives …")
-    s = requests.Session()
-    s.headers.update(NSE_HDR)
-    try:
-        r = s.get(NSE_CSV_URL, timeout=25)
-        r.raise_for_status()
-        df = pd.read_csv(io.StringIO(r.text))
-        df.columns = [c.strip().upper().replace(" ", "_") for c in df.columns]
-        sym = next((c for c in df.columns if "SYMBOL" in c), None)
-        if sym and sym != "SYMBOL":
-            df.rename(columns={sym: "SYMBOL"}, inplace=True)
-        log.info(f"  ✓ {len(df)} symbols from Nifty 500 CSV")
-        return df
-    except Exception as e:
-        raise RuntimeError(f"Cannot fetch Nifty 500 from NSE archives: {e}") from e
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PARSING HELPERS
+# PARSING HELPERS  (must be defined before get_wacc uses _safe)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _num(text):
@@ -236,6 +211,62 @@ def _cagr_pct(series):
 def _avg(lst):
     vals = [v for v in lst if v is not None]
     return round(sum(vals) / len(vals), 2) if vals else None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WACC (defined after _safe is available)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def get_wacc(row) -> float:
+    """
+    Stock-specific WACC.
+    FIX: quality discount now only applies when other income is genuinely low
+         (prevents asset-sale-inflated ROE from reducing WACC).
+    """
+    base = WACC   # 0.12
+
+    de     = _safe(row.get("DEBT_TO_EQUITY")) or 0
+    sector = str(row.get("SECTOR", "")).upper()
+    roe    = _safe(row.get("ROE_PCT")) or 0
+    ic     = _safe(row.get("INTEREST_COVERAGE")) or 0
+
+    # Debt premium
+    if de > 2.0:   base += 0.03
+    elif de > 1.0: base += 0.02
+    elif de > 0.5: base += 0.01
+
+    # Cyclical sector premium
+    if any(c in sector for c in CYCLICAL_SECTORS):
+        base += 0.015
+
+    # ── FIX: quality discount only when other income < 30% of PBT ────────
+    oi_to_pbt = _safe(row.get("OTHER_INCOME_TO_PBT_PCT")) or 0
+    if roe > 25 and ic > 5 and de < 0.5 and oi_to_pbt < 30:
+        base -= 0.01
+
+    return round(min(max(base, 0.10), 0.18), 4)   # clamp 10–18%
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STEP 1 — NSE NIFTY 500
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fetch_nifty500() -> pd.DataFrame:
+    log.info("Fetching Nifty 500 from NSE archives …")
+    s = requests.Session()
+    s.headers.update(NSE_HDR)
+    try:
+        r = s.get(NSE_CSV_URL, timeout=25)
+        r.raise_for_status()
+        df = pd.read_csv(io.StringIO(r.text))
+        df.columns = [c.strip().upper().replace(" ", "_") for c in df.columns]
+        sym = next((c for c in df.columns if "SYMBOL" in c), None)
+        if sym and sym != "SYMBOL":
+            df.rename(columns={sym: "SYMBOL"}, inplace=True)
+        log.info(f"  ✓ {len(df)} symbols from Nifty 500 CSV")
+        return df
+    except Exception as e:
+        raise RuntimeError(f"Cannot fetch Nifty 500 from NSE archives: {e}") from e
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -351,7 +382,6 @@ CF_ROW_MAP = [
 ]
 
 def get_core_eps(row):
-    # Prefer explicit CORE_EPS; fall back to PL_EPS_BASIC; last resort EPS_TTM
     return _g(row, "CORE_EPS", "PL_EPS_BASIC", "EPS_TTM")
 
 def _map_rows(df, row_map, col_key):
@@ -418,7 +448,6 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     if h1:
         r["COMPANY_NAME"] = h1.get_text(strip=True)
 
-    # Store which page variant was actually served
     r["SCREENER_PAGE_TYPE"] = "consolidated" if "/consolidated/" in r.get("SCREENER_URL","") else "standalone"
 
     for tag in soup.select("a[href*='/company/']"):
@@ -448,20 +477,17 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     ycols_pl = _ycols(df_pl)
 
     if ycols_pl:
-        #annual_ycols = [c for c in ycols_pl if not re.search(r'TTM|trailing', c, re.I)]
-        #annual_ycols = [c for c in ycols_plif not re.search(r'TTM|trailing', c, re.I)and re.search(r'Mar\s*\d{4}', c, re.I)]
         annual_ycols = [
-                c for c in ycols_pl
-                if not re.search(r'TTM|trailing', c, re.I)
-                and re.search(r'(Mar|Dec|Jun|Sep)\s*\d{4}', c, re.I)
-            ]
+            c for c in ycols_pl
+            if not re.search(r'TTM|trailing', c, re.I)
+            and re.search(r'(Mar|Dec|Jun|Sep)\s*\d{4}', c, re.I)
+        ]
         ly = annual_ycols[-1] if annual_ycols else ycols_pl[-1]
         r.update(_map_rows(df_pl, PL_ROW_MAP, ly))
         r.update(_map_all_years(df_pl, PL_ROW_MAP, ycols_pl, prefix="A_"))
 
         rev_row = _find_row(df_pl, "sales", "revenue from operations", "net revenue")
         pat_row = _find_row(df_pl, "net profit", "pat")
-        eps_row = _find_row(df_pl, "eps")
 
         if len(ycols_pl) >= 2:
             py = ycols_pl[-2]
@@ -479,7 +505,6 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
                 sl = ycols_pl[-(yrs+1):]
                 r[f"REVENUE_CAGR_{lbl}_PCT"] = _cagr_pct([_val(rev_row, c) for c in sl])
 
-                # ── Exceptional-adjusted PAT CAGR ────────────────────────
                 adj_series = []
                 for c in sl:
                     yr = re.sub(r"[^A-Z0-9]", "", c.upper())
@@ -488,7 +513,7 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
                     exc  = _val(exc_row_cagr, c) if exc_row_cagr is not None else None
                     if pat is not None:
                         if oi_y:  pat = pat - oi_y * 0.75
-                        if exc:   pat = pat - exc   # strip exceptional item
+                        if exc:   pat = pat - exc
                     adj_series.append(pat)
 
                 r[f"PAT_CAGR_{lbl}_PCT"] = _cagr_pct(adj_series)
@@ -593,19 +618,14 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         mc  = _safe(r.get("MARKET_CAP_CR"))
         cmp = _safe(r.get("CMP"))
 
-        # ── Derive SHARES_CR from Market Cap ÷ CMP ──────────────────────
-        # MC is in Crores, CMP is the stock price in ₹
-        # shares_in_crores = MC_in_crores / CMP
         if mc and cmp and cmp > 0 and not r.get("SHARES_CR"):
             r["SHARES_CR"] = round(mc / cmp, 4)
 
-        # Also try from balance sheet: equity capital / face value
         eq_cap   = _safe(r.get("BS_SHARE_CAPITAL_CR"))
         face_val = _safe(r.get("FACE_VALUE"))
         if not r.get("SHARES_CR") and eq_cap and face_val and face_val > 0:
             r["SHARES_CR"] = round(eq_cap / face_val, 4)
 
-        # 🔥 CORE EPS (fix all valuation models)
         shares = _safe(r.get("SHARES_CR"))
         pat    = _safe(r.get("PL_PAT_CR"))
         if shares and pat and shares > 0:
@@ -634,10 +654,8 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
     oi   = _safe(r.get("PL_OTHER_INCOME_CR"))
     tr   = _safe(r.get("PL_TAX_RATE_PCT"))
     _eq  = _safe(r.get("BS_TOTAL_EQUITY_CR"))
-    
-    # 🔥 CORE PAT OVERRIDE (fix everything downstream)
-    # ── CORE PAT: strip other income (non-operating) ──────────────────────
-    _raw_pat = _safe(r.get("PL_PAT_CR"))   # reported PAT, untouched
+
+    _raw_pat  = _safe(r.get("PL_PAT_CR"))
     _core_pat = _raw_pat
 
     if _core_pat is not None:
@@ -646,19 +664,16 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
         elif oi is not None:
             _core_pat = _core_pat - oi * 0.75
 
-    # Store BOTH — raw for reference, core for all valuation models
     if _raw_pat is not None:
         r["PL_PAT_REPORTED_CR"] = round(_raw_pat, 2)
     if _core_pat is not None:
-        r["PL_PAT_CR"] = round(_core_pat, 2)   # overwrite with core
+        r["PL_PAT_CR"] = round(_core_pat, 2)
 
-    # ── CORE EPS: always derived from CORE PAT ÷ shares ──────────────────
     shares = _safe(r.get("SHARES_CR"))
     if shares and _core_pat is not None and shares > 0:
-        r["PL_EPS_BASIC"]  = round(_core_pat / shares, 2)
-        r["CORE_EPS"]      = r["PL_EPS_BASIC"]   # explicit alias used by models
-    
-    # ── Adjusted ROE (ex other income) ───────────────────────────────────
+        r["PL_EPS_BASIC"] = round(_core_pat / shares, 2)
+        r["CORE_EPS"]     = r["PL_EPS_BASIC"]
+
     if _core_pat and _eq and _eq > 0:
         r["ROE_ADJ_EX_OTHER_INCOME_PCT"] = round(_core_pat / _eq * 100, 2)
 
@@ -769,7 +784,6 @@ def scrape_screener(symbol: str, session: requests.Session) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _csv_age_days(path: str) -> float | None:
-    """Return age of CSV in days based on oldest DATE_DOWNLOADED value, or file mtime."""
     p = Path(path)
     if not p.exists():
         return None
@@ -782,13 +796,11 @@ def _csv_age_days(path: str) -> float | None:
                 return (datetime.now() - oldest.to_pydatetime()).days
     except Exception:
         pass
-    # Fallback: file modification time
     mtime = datetime.fromtimestamp(p.stat().st_mtime)
     return (datetime.now() - mtime).days
 
 
 def _load_existing_symbols(path: str) -> set:
-    """Return set of SYMBOL values already present in the CSV."""
     p = Path(path)
     if not p.exists():
         return set()
@@ -804,24 +816,13 @@ def build_master_csv(nse_df: pd.DataFrame,
                      output_path: str,
                      delay: float = REQUEST_DELAY,
                      force_refresh: bool = False) -> pd.DataFrame:
-    """
-    Scrape symbols and append each row immediately to the CSV.
-
-    Logic:
-      - If a symbol is already in the CSV → skip (unless force_refresh)
-      - Writes header on first row, then appends without re-writing header
-      - Stamps DATE_DOWNLOADED on every row
-      - Ctrl+C safe: whatever was written is already on disk
-    """
     out_path = Path(output_path)
     today    = datetime.now().strftime("%Y-%m-%d")
 
-    # Load already-downloaded symbols
     existing = _load_existing_symbols(output_path) if not force_refresh else set()
     if existing:
         log.info(f"  CSV already has {len(existing)} symbols — will skip those")
 
-    # Symbols still to download
     todo = [s for s in symbols if s.upper() not in existing]
     if not todo:
         log.info("  All symbols already in CSV. Nothing to download.")
@@ -834,23 +835,21 @@ def build_master_csv(nse_df: pd.DataFrame,
 
     write_header = not out_path.exists() or force_refresh
     if force_refresh and out_path.exists():
-        out_path.unlink()          # wipe and restart
+        out_path.unlink()
         write_header = True
 
-    errors = 0
+    errors   = 0
     csv_file = None
 
     try:
         csv_file = open(out_path, "a", newline="", encoding="utf-8")
-        writer   = None                     # initialised on first row
+        writer   = None
 
         for sym in tqdm(todo, desc="Screener.in", unit="stock"):
             row = scrape_screener(sym, session)
-            row["DATE_DOWNLOADED"] = today  # ← stamp every row
+            row["DATE_DOWNLOADED"] = today
 
-            # ── Write to CSV immediately ──────────────────────────────────
             if writer is None:
-                # Determine all column names on first row; preserve order
                 fieldnames = list(row.keys())
                 writer = csv.DictWriter(
                     csv_file, fieldnames=fieldnames,
@@ -860,13 +859,9 @@ def build_master_csv(nse_df: pd.DataFrame,
                 if write_header:
                     writer.writeheader()
                     write_header = False
-            else:
-                # Add any new columns that appeared (edge case: some stocks have
-                # extra segment rows). We don't re-write header, just drop extras.
-                pass
 
             writer.writerow(row)
-            csv_file.flush()            # ensure it's on disk immediately
+            csv_file.flush()
 
             if "SCREENER_ERROR" in row:
                 errors += 1
@@ -882,7 +877,6 @@ def build_master_csv(nse_df: pd.DataFrame,
     downloaded = len(todo) - errors
     log.info(f"  ✓ Downloaded {downloaded} new rows  |  Errors: {errors}")
 
-    # Re-read full CSV (all appended rows) and enrich with NSE metadata
     try:
         scraped_df = pd.read_csv(out_path)
     except Exception:
@@ -891,10 +885,8 @@ def build_master_csv(nse_df: pd.DataFrame,
     if scraped_df.empty:
         return scraped_df
 
-    # Left-join NSE metadata onto scraped data (keeps ALL scraped rows)
     sym_col = next((c for c in nse_df.columns if "SYMBOL" in c.upper()), None)
     if sym_col:
-        # Only bring in NSE columns not already in scraped_df
         nse_extra = nse_df[[c for c in nse_df.columns
                              if c not in scraped_df.columns or c == sym_col]]
         master = scraped_df.merge(nse_extra, left_on="SYMBOL",
@@ -902,7 +894,6 @@ def build_master_csv(nse_df: pd.DataFrame,
     else:
         master = scraped_df
 
-    # Overwrite with enriched version
     master.to_csv(output_path, index=False)
     log.info(f"  ✓ Final CSV → {output_path}  ({len(master)} rows × {len(master.columns)} cols)")
     return master
@@ -942,42 +933,17 @@ SCORE_METRICS = [
 
 MAX_SCORE = sum(max(pts) for _, _, _, pts in SCORE_METRICS)
 
-def _fcol(df, key):
-    k = key.upper()
-    for c in df.columns:
-        if k in c.upper():
-            return c
-    return None
-
-def _bracket(v, lower, thresholds, points):
-    try:
-        v = float(v)
-    except (TypeError, ValueError):
-        return 0
-    if v != v:
-        return 0
-    if lower:
-        for i in range(len(thresholds) - 1):
-            if v <= thresholds[i + 1]:
-                return points[i] if i < len(points) else 0
-        return points[-1] if points else 0
-    else:
-        for i, t in enumerate(thresholds):
-            if v >= t:
-                return points[i] if i < len(points) else 0
-        return 0
-
 def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    def _fcol(df, key):
+    def _fcol_inner(df, key):
         k = key.upper()
         for c in df.columns:
             if k in c.upper():
                 return c
         return None
 
-    def _bracket(v, lower, thresholds, points):
+    def _bracket_inner(v, lower, thresholds, points):
         try:
             v = float(v)
         except:
@@ -1003,22 +969,21 @@ def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
     scols = []
 
     for key, lb, thr, pts in SCORE_METRICS:
-        col = _fcol(df, key)
+        col = _fcol_inner(df, key)
         sc  = f"SCORE_{key}"
         scols.append(sc)
         if col:
-            df[sc] = df[col].apply(lambda v: _bracket(v, lb, thr, pts))
+            df[sc] = df[col].apply(lambda v: _bracket_inner(v, lb, thr, pts))
         else:
             df[sc] = 0
 
-    # ── Override scores for financial sector stocks ───────────────────────
     fin_scols = []
     for key, lb, thr, pts in SCORE_METRICS_FINANCIAL:
-        col = _fcol(df, key)
+        col = _fcol_inner(df, key)
         sc  = f"FSCORE_{key}"
         fin_scols.append(sc)
         if col:
-            df[sc] = df[col].apply(lambda v: _bracket(v, lb, thr, pts))
+            df[sc] = df[col].apply(lambda v: _bracket_inner(v, lb, thr, pts))
         else:
             df[sc] = 0
 
@@ -1027,49 +992,43 @@ def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
     def row_score(row):
         if _is_financial(row):
             raw = sum(row.get(sc, 0) for sc in fin_scols)
-            return round(raw / fin_max * MAX_SCORE, 2)   # normalise to same scale
+            return round(raw / fin_max * MAX_SCORE, 2)
         return sum(row.get(sc, 0) for sc in scols)
 
     df["VALUATION_SCORE"]     = df.apply(row_score, axis=1)
     df["VALUATION_SCORE_PCT"] = (df["VALUATION_SCORE"] / MAX_SCORE * 100).round(1)
     df["VALUATION_RANK"]      = df["VALUATION_SCORE"].rank(ascending=False, method="min").astype(int)
 
-    # Clean up temporary financial score columns
     df.drop(columns=fin_scols, inplace=True, errors="ignore")
 
     return df
 
-def sanitize_fv_pairs(row, pairs):
-    clean = []
 
+def sanitize_fv_pairs(row, pairs):
+    clean   = []
     fcf_yield = row.get("FCF_YIELD_PCT")
     growth    = row.get("PAT_CAGR_3YR_PCT")
-
-    sector = str(row.get("SECTOR", "")).upper()
+    sector    = str(row.get("SECTOR", "")).upper()
 
     for col, v in pairs:
         if any(c in sector for c in CYCLICAL_SECTORS):
             if col in ["FV_DCF", "FV_DCF_2STAGE", "FV_FCF_YIELD", "FV_OWNER_EARNINGS"]:
                 continue
-
-        # 🚨 FCF-based models
         if col in ["FV_PE_MEAN", "FV_EV_EBITDA"]:
             continue
         if col in ["FV_DCF", "FV_DCF_2STAGE", "FV_FCF_YIELD", "FV_OWNER_EARNINGS"]:
             if fcf_yield and (fcf_yield > 12 or fcf_yield < -5):
                 continue
-
-        # 🚨 Growth-based models
         if col in ["FV_LYNCH", "FV_GROWTH_PE"]:
             if growth is None or growth < 0 or growth > 30:
                 continue
-
         clean.append((col, v))
 
     return clean
 
+
 # ══════════════════════════════════════════════════════════════════════════════
-# STEP 4b — 8 FAIR VALUE MODELS
+# STEP 4b — 14 FAIR VALUE MODELS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _g(row, *keys):
@@ -1079,16 +1038,19 @@ def _g(row, *keys):
             return v
     return None
 
+
 def fv_graham(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     bv  = _g(row, "BOOK_VALUE")
     return round(math.sqrt(22.5 * eps * bv), 2) if eps and bv and eps > 0 and bv > 0 else None
+
 
 def fv_lynch(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     g   = _g(row, "EPS_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT")
     g   = min(g, 25) if g else None
     return round(eps * g, 2) if eps and g and eps > 0 and g > 0 else None
+
 
 def fv_dcf(row):
     fcf    = _g(row, "CF_FCF_CR", "CF_FCF_3YR_AVG_CR")
@@ -1097,8 +1059,11 @@ def fv_dcf(row):
     g_pat  = _g(row, "PAT_CAGR_3YR_PCT")
     if not (fcf and shares and fcf > 0 and shares > 0):
         return None
+    # ── FIX: skip when FCF_YIELD > 20% — signals asset-sale distortion ───
+    if (_safe(row.get("FCF_YIELD_PCT")) or 0) > 20:
+        return None
     wacc   = get_wacc(row)
-    tg     = min(TERMINAL_GROWTH, wacc - 0.03)   # ensure tg < wacc always
+    tg     = min(TERMINAL_GROWTH, wacc - 0.03)
     fcf_ps = fcf / shares
     g1 = min((g_rev or g_pat or 8) / 100, 0.15)
     g2 = g1 / 2
@@ -1111,37 +1076,49 @@ def fv_dcf(row):
     pv += tv / (1 + wacc) ** 10
     return round(pv, 2) if pv > 0 else None
 
+
 def fv_ev_ebitda(row):
     ebitda = _g(row, "PL_EBITDA_CR")
     oi     = _g(row, "PL_OTHER_INCOME_CR")
-    
-    # 🔥 remove non-operating income
     if ebitda and oi:
-        ebitda = ebitda - oi
-      
+        ebitda = ebitda - oi          # strip non-operating income
+
     cash   = _g(row, "BS_CASH_CR") or 0
     debt   = _g(row, "BS_TOTAL_BORROWINGS_CR") or 0
     shares = _g(row, "SHARES_CR")
     if not (ebitda and shares and ebitda > 0 and shares > 0):
         return None
-    roe = _g(row, "ROE_PCT", "ROE_CALC_PCT") or 15
+
+    roe  = _g(row, "ROE_PCT", "ROE_CALC_PCT") or 15
     roce = _g(row, "ROCE_PCT") or 15
-    # High-quality stocks (ROE > 25%) deserve 30–40x; normal = 12–18x
-    if roe > 40 or roce > 40:
-        multiple = 35
+
+    # ── FIX 1: demote ROE/ROCE when inflated by asset sales ──────────────
+    oi_to_pbt = _safe(row.get("OTHER_INCOME_TO_PBT_PCT")) or 0
+    if oi_to_pbt > 30:
+        roe  = min(roe,  15)
+        roce = min(roce, 15)
+
+    # ── FIX 2: hard cap at 12x for EPC / Construction / Infrastructure ───
+    sector = str(row.get("SECTOR", "")).upper()
+    if any(e in sector for e in EPC_SECTORS):
+        multiple = 12
+    elif roe > 40 or roce > 40:
+        multiple = 20   # genuine quality compounders (TCS, HDFC Bank etc.)
     elif roe > 20 or roce > 20:
-        multiple = 22
-    else:
         multiple = 15
-    
+    else:
+        multiple = 10
+
     ev = multiple * ebitda + cash - debt
     return round(ev / shares, 2) if ev > 0 else None
+
 
 def fv_pe_mean(row):
     eps = _g(row, "PL_EPS_BASIC", "EPS_TTM")
     ipe = _g(row, "INDUSTRY_PE")
-    tpe = min(ipe, 60) if ipe and ipe > 5 else 25     # ← raised cap to 60
+    tpe = min(ipe, 60) if ipe and ipe > 5 else 25
     return round(eps * tpe, 2) if eps and eps > 0 else None
+
 
 def fv_pb(row):
     bv  = _g(row, "BOOK_VALUE")
@@ -1151,6 +1128,7 @@ def fv_pb(row):
     coe = RISK_FREE + EQUITY_PREMIUM
     pb  = min(max((roe / 100) / coe, 0.5), 15)
     return round(bv * pb, 2)
+
 
 def fv_ddm(row):
     eps    = _g(row, "PL_EPS_BASIC", "EPS_TTM")
@@ -1168,13 +1146,13 @@ def fv_ddm(row):
     fv  = dps * (1 + g) / (coe - g)
     return round(fv, 2) if fv > 0 else None
 
+
 def fv_epv(row):
     ebitda = _g(row, "PL_EBITDA_CR")
     oi     = _g(row, "PL_OTHER_INCOME_CR")
-    
-    # 🔥 remove non-operating income
     if ebitda and oi:
-        ebitda = ebitda - oi
+        ebitda = ebitda - oi          # strip non-operating income
+
     depr   = _g(row, "PL_DEPR_CR") or 0
     tax    = _g(row, "PL_TAX_RATE_PCT")
     cash   = _g(row, "BS_CASH_CR") or 0
@@ -1189,61 +1167,44 @@ def fv_epv(row):
     epv = (nopat / get_wacc(row) + cash - debt) / shares
     return round(epv, 2) if epv > 0 else None
 
-# ══════════════════════════════════════════════════════════════════════
-# ➕ ADDITIONAL HIGH-QUALITY MODELS
-# ══════════════════════════════════════════════════════════════════════
 
 def fv_earnings_yield(row):
     eps = get_core_eps(row)
     if not eps or eps <= 0:
         return None
-
-    # Sanity check: EPS must be consistent — compare to prior year EPS
-    # to avoid demerger/exceptional spikes
-    cmp   = _g(row, "CMP")
-    pe    = _g(row, "PE")
-
-    # If implied PE from this EPS would be < 5, something is wrong
+    cmp = _g(row, "CMP")
+    pe  = _g(row, "PE")
     if cmp and cmp > 0 and (cmp / eps) < 5:
         return None
-
-    # If actual market PE is available and wildly disagrees, skip
-    # e.g. market says PE=60 but our EPS implies PE=11 — EPS is stale/wrong
-    if pe and pe > 0 and eps > 0 and cmp and cmp > 0:
-        implied_pe = cmp / eps
-        if implied_pe < pe * 0.3:   # our EPS is >3x what market implies
+    if pe and pe > 0 and cmp and cmp > 0:
+        if (cmp / eps) < pe * 0.3:
             return None
-
-    fair_yield = 0.09
-    return round(eps / fair_yield, 2)
+    return round(eps / 0.09, 2)
 
 
 def fv_roe_pb(row):
     bv  = _g(row, "BOOK_VALUE")
     roe = _g(row, "ROE_PCT", "ROE_CALC_PCT")
-
     if not (bv and roe and roe > 0):
         return None
-
-    coe = RISK_FREE + EQUITY_PREMIUM  # ~12–13%
-    justified_pb = (roe / 100) / coe
-
-    justified_pb = min(max(justified_pb, 0.5), 6)
-
+    # ── FIX: cap ROE when inflated by asset sales ─────────────────────────
+    oi_to_pbt = _safe(row.get("OTHER_INCOME_TO_PBT_PCT")) or 0
+    if oi_to_pbt > 30:
+        roe = min(roe, 15)
+    coe          = RISK_FREE + EQUITY_PREMIUM
+    justified_pb = min(max((roe / 100) / coe, 0.5), 6)
     return round(bv * justified_pb, 2)
 
 
 def fv_fcf_yield(row):
     fcf    = _g(row, "CF_FCF_CR", "CF_FCF_3YR_AVG_CR")
     shares = _g(row, "SHARES_CR")
-
     if not (fcf and shares and fcf > 0 and shares > 0):
         return None
-
-    fcf_ps = fcf / shares
-
-    # fair yield = 7–9%
-    return round(fcf_ps / 0.08, 2)
+    # ── FIX: skip when FCF_YIELD > 20% — asset-sale distortion ──────────
+    if (_safe(row.get("FCF_YIELD_PCT")) or 0) > 20:
+        return None
+    return round((fcf / shares) / 0.08, 2)
 
 
 def fv_owner_earnings(row):
@@ -1253,33 +1214,25 @@ def fv_owner_earnings(row):
     wc     = _g(row, "CF_WC_CHANGE_CR") or 0
     tax    = _g(row, "PL_TAX_RATE_PCT") or 25
     shares = _g(row, "SHARES_CR")
-
     if not (ebitda and shares and shares > 0):
         return None
-
-    # remove fake income
-    ebitda = ebitda - oi
-
-    owner_earnings = (ebitda - abs(capex) - abs(wc)) * (1 - tax/100)
-
+    # ── FIX: skip when FCF_YIELD > 20% — asset-sale distortion ──────────
+    if (_safe(row.get("FCF_YIELD_PCT")) or 0) > 20:
+        return None
+    ebitda -= oi   # strip non-operating income
+    owner_earnings = (ebitda - abs(capex) - abs(wc)) * (1 - tax / 100)
     if owner_earnings <= 0:
         return None
-
     return round((owner_earnings / get_wacc(row)) / shares, 2)
 
 
 def fv_growth_pe(row):
     eps = get_core_eps(row)
     g   = _g(row, "PAT_CAGR_3YR_PCT", "EPS_CAGR_3YR_PCT")
-
     if not (eps and g and eps > 0 and g > 0):
         return None
-
-    g = min(g, 20)
-
-    # PEG = 1–1.2
+    g  = min(g, 20)
     pe = g * 1.1
-
     return round(eps * pe, 2)
 
 
@@ -1287,81 +1240,60 @@ def fv_dcf_2stage(row):
     fcf    = _g(row, "CF_FCF_CR", "CF_FCF_3YR_AVG_CR")
     shares = _g(row, "SHARES_CR")
     g      = _g(row, "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT")
-
     if not (fcf and shares and fcf > 0 and shares > 0):
         return None
-
-    wacc = get_wacc(row)        # dynamic per stock, not hardcoded 12%
-    tg   = min(0.05, wacc - 0.03)   # terminal growth always stays below wacc
-    g1   = min((g or 8)/100, 0.12)
-    g2   = tg                   # use same conservative terminal growth
-
+    # ── FIX: skip when FCF_YIELD > 20% — asset-sale distortion ──────────
+    if (_safe(row.get("FCF_YIELD_PCT")) or 0) > 20:
+        return None
+    wacc   = get_wacc(row)
+    tg     = min(0.05, wacc - 0.03)
+    g1     = min((g or 8) / 100, 0.12)
+    g2     = tg
     fcf_ps = fcf / shares
-
     pv = 0
     cf = fcf_ps
-
-    # 5 year high growth phase
     for i in range(1, 6):
         cf *= (1 + g1)
-        pv += cf / ((1 + wacc) ** i)   # wacc replaces WACC
-
-    # terminal value
-    tv = cf * (1 + g2) / (wacc - g2)   # wacc replaces WACC
-    pv += tv / ((1 + wacc) ** 5)       # wacc replaces WACC
-
+        pv += cf / ((1 + wacc) ** i)
+    tv  = cf * (1 + g2) / (wacc - g2)
+    pv += tv / ((1 + wacc) ** 5)
     return round(pv, 2)
 
-FV_MODELS = {
-    "FV_GRAHAM":        fv_graham,
-    "FV_LYNCH":         fv_lynch,
-    "FV_DCF":           fv_dcf,
-    "FV_EPV":           fv_epv,
-    "FV_EV_EBITDA":     fv_ev_ebitda,    # was missing — crucial for quality stocks
-    "FV_PE_MEAN":       fv_pe_mean,      # was missing — industry PE anchor
-    "FV_PB":            fv_pb,           # was missing — ROE-justified book value
-    "FV_DDM":           fv_ddm,          # was missing — dividend payers
-    "FV_EARNINGS_YIELD": fv_earnings_yield,
-    "FV_ROE_PB":        fv_roe_pb,
-    "FV_FCF_YIELD":     fv_fcf_yield,
-    "FV_OWNER_EARNINGS": fv_owner_earnings,
-    "FV_GROWTH_PE":     fv_growth_pe,
-    "FV_DCF_2STAGE":    fv_dcf_2stage,
-}
-def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
-    import numpy as np
-    import pandas as pd
-    import itertools
 
+FV_MODELS = {
+    "FV_GRAHAM":         fv_graham,
+    "FV_LYNCH":          fv_lynch,
+    "FV_DCF":            fv_dcf,
+    "FV_EPV":            fv_epv,
+    "FV_EV_EBITDA":      fv_ev_ebitda,
+    "FV_PE_MEAN":        fv_pe_mean,
+    "FV_PB":             fv_pb,
+    "FV_DDM":            fv_ddm,
+    "FV_EARNINGS_YIELD": fv_earnings_yield,
+    "FV_ROE_PB":         fv_roe_pb,
+    "FV_FCF_YIELD":      fv_fcf_yield,
+    "FV_OWNER_EARNINGS": fv_owner_earnings,
+    "FV_GROWTH_PE":      fv_growth_pe,
+    "FV_DCF_2STAGE":     fv_dcf_2stage,
+}
+
+
+def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    # Drop any stale FV/composite columns from previous runs
     stale = [c for c in df.columns if c.startswith("FV_") or c in [
         "COMPOSITE_FAIR_VALUE", "UPSIDE_PCT", "MARGIN_OF_SAFETY_PCT", "FV_GRADE", "FV_COUNT"
     ]]
     df.drop(columns=stale, inplace=True, errors="ignore")
 
-    # ─────────────────────────────────────────────
-    # 🔥 APPLY ALL MODELS (ONLY FROM FV_MODELS)
-    # ─────────────────────────────────────────────
     for name, func in FV_MODELS.items():
         df[name] = df.apply(func, axis=1)
 
-    # Debug: log which models fired for problem stocks
-    #for sym in ["TRENT", "COLPAL", "TBOTEK"]:
-        #rows = df[df["SYMBOL"] == sym]
-        #if not rows.empty:
-            #fired = {m: rows.iloc[0][m] for m in FV_MODELS.keys() if m in df.columns}
-            #print(f"\n{sym} model values: {fired}")
-
     fv_cols = list(FV_MODELS.keys())
 
-    # ─────────────────────────────────────────────
-    # 🧠 COMPOSITE FAIR VALUE (ROBUST)
-    # ─────────────────────────────────────────────
     def compute_composite(row):
+        # ── Collect all valid positive FV model outputs ───────────────────
         pairs = []
-
         for c in fv_cols:
             v = row.get(c)
             if pd.notna(v):
@@ -1374,72 +1306,68 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
 
         values = [v for _, v in sanitize_fv_pairs(row, pairs)]
 
-        # ── Market cap sanity filter ───────────────────────────────────
-        # If a model's implied price is > 5x CMP with no earnings support,
-        # it's feeding on wrong-scale data (e.g. consolidated vs standalone)
-        cmp_val  = _safe(row.get("CMP"))
-        mc_val   = _safe(row.get("MARKET_CAP_CR"))
-        shares_v = _safe(row.get("SHARES_CR"))
+        # ── CMP-based outlier filter ──────────────────────────────────────
+        cmp_val = _safe(row.get("CMP"))
         if cmp_val and cmp_val > 0:
-            values_filtered = []
+            filtered = []
             for col, v in pairs:
-                # Model FV should not exceed 4x CMP unless PE is genuinely low
                 pe = _safe(row.get("PE"))
                 if v > cmp_val * 4 and (pe is None or pe > 10):
                     continue
-                values_filtered.append(v)
-            # Only use filtered if it didn't remove everything
-            if len(values_filtered) >= 2:
-                values = sorted(values_filtered)
-            else:
-                values = sorted([v for _, v in pairs])
+                filtered.append(v)
+            values = sorted(filtered) if len(filtered) >= 2 else sorted(v for _, v in pairs)
         else:
-            values = sorted([v for _, v in pairs])
+            values = sorted(v for _, v in pairs)
 
         if len(values) < 2:
             return None
 
-        # 🔥 remove BOTH extremes (key fix)
         if len(values) >= 4:
             values = values[1:-1]
 
         if len(values) < 2:
             return None
 
-        # ── Disagreement filter: need 3+ models within 40% of each other ─
-        # ── Disagreement filter ───────────────────────────────────────
-        # ── Model clustering: separate earnings-based from asset-based ──
-        pe_val      = _safe(row.get("PE"))
-        growth_3yr  = _safe(row.get("PAT_CAGR_3YR_PCT")) or 0
+        # ── FIX: OTHER_INCOME guard ───────────────────────────────────────
+        # If other income > 50% of PBT, cap all FV estimates at 3x book value.
+        # This catches Ashoka Buildcon type situations where SPV asset sales
+        # temporarily inflate every metric (ROE, PAT, FCF, EBITDA).
+        oi_to_pbt = _safe(row.get("OTHER_INCOME_TO_PBT_PCT")) or 0
+        bv        = _safe(row.get("BOOK_VALUE")) or 0
+        if oi_to_pbt > 50 and bv > 0:
+            cap = bv * 3
+            capped = [v for v in values if v <= cap]
+            if len(capped) >= 2:
+                values = capped
+            elif len(capped) == 1:
+                return None   # insufficient consensus after capping
 
-        # Asset-based models structurally undervalue high-PE growth stocks
-        # For PE > 40 OR PAT CAGR > 30%, prefer earnings/cashflow models
-        asset_based = {"FV_GRAHAM", "FV_EPV", "FV_PB", "FV_ROE_PB",
-                       "FV_OWNER_EARNINGS"}
-        earnings_based_vals = []
-        asset_based_vals = []
+        # ── Growth-stock vs value-stock routing ───────────────────────────
+        pe_val     = _safe(row.get("PE"))
+        growth_3yr = _safe(row.get("PAT_CAGR_3YR_PCT")) or 0
 
+        # ── FIX: use effective ROE (not inflated by asset sales) ─────────
+        roe_val       = _safe(row.get("ROE_PCT")) or 0
+        oi_pbt_check  = _safe(row.get("OTHER_INCOME_TO_PBT_PCT")) or 0
+        effective_roe = roe_val if oi_pbt_check < 30 else min(roe_val, 15)
+
+        asset_based    = {"FV_GRAHAM", "FV_EPV", "FV_PB", "FV_ROE_PB", "FV_OWNER_EARNINGS"}
+        earnings_based = []
         for c in fv_cols:
             v = row.get(c)
-            if pd.notna(v) and v and float(v) > 0:
-                if c in asset_based:
-                    asset_based_vals.append(float(v))
-                else:
-                    earnings_based_vals.append(float(v))
+            if pd.notna(v) and v and float(v) > 0 and c not in asset_based:
+                earnings_based.append(float(v))
 
-        roe_val = _safe(row.get("ROE_PCT")) or 0
-        # Growth stock: high PE, OR high growth, OR high ROE (quality compounder)
         is_growth_stock = (
             (pe_val and pe_val > 30) or
             growth_3yr > 20 or
-            roe_val > 25
+            effective_roe > 25   # uses effective_roe — not raw roe_val
         )
 
-        if is_growth_stock and len(earnings_based_vals) >= 2:
-            values = sorted(earnings_based_vals)
-            # For growth stocks use wider consensus — models naturally spread more
-            median = np.median(values)
-            consensus = [v for v in values if 0.5*median <= v <= 2.0*median]
+        if is_growth_stock and len(earnings_based) >= 2:
+            values   = sorted(earnings_based)
+            median   = np.median(values)
+            consensus = [v for v in values if 0.5 * median <= v <= 2.0 * median]
             if len(consensus) < 2:
                 return None
             values = consensus
@@ -1448,121 +1376,71 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
                 values = sorted(values)[1:-1]
             if len(values) < 2:
                 return None
-            median = np.median(values)
-            consensus = [v for v in values if 0.6*median <= v <= 1.6*median]
+            median    = np.median(values)
+            consensus = [v for v in values if 0.6 * median <= v <= 1.6 * median]
             if len(consensus) < 2:
-                consensus = [v for v in values if 0.5*median <= v <= 2.0*median]
+                consensus = [v for v in values if 0.5 * median <= v <= 2.0 * median]
                 if len(consensus) < 2:
                     return None
             values = consensus
 
-        # 🔥 earnings stability filter
-        # 🔥 earnings stability + history filter
-        # Collect PAT history across all year-end conventions
-        # (Mar, Dec, Jun, Sep year-end companies)
-        pat_keys = [c for c in row.index
-                    if re.search(r"^A_PL_PAT_CR_[A-Z]{3}\d{4}$", c)]
-        pat_keys = sorted(pat_keys)
+        # ── PAT history sanity checks ─────────────────────────────────────
+        pat_keys = sorted([c for c in row.index
+                           if re.search(r"^A_PL_PAT_CR_[A-Z]{3}\d{4}$", c)])
         pat_vals = [_safe(row.get(k)) for k in pat_keys]
         pat_vals = [p for p in pat_vals if p is not None]
 
-        # Fallback: if still empty, COLPAL-type companies may use
-        # a different column name format — try broader match
         if not pat_vals:
-            pat_keys = [c for c in row.index
-                        if c.startswith("A_PL_PAT_CR_") and
-                        re.search(r"\d{4}", c)]
-            pat_keys = sorted(pat_keys)
+            pat_keys = sorted([c for c in row.index
+                                if c.startswith("A_PL_PAT_CR_") and re.search(r"\d{4}", c)])
             pat_vals = [_safe(row.get(k)) for k in pat_keys]
             pat_vals = [p for p in pat_vals if p is not None]
 
         if len(pat_vals) < 2:
             return None
-        
-        # ── PAT scale vs Market Cap plausibility ──────────────────────
-        # If PAT implies a PE of < 2 at current price, the PAT figure is
-        # consolidated/wrong-entity data. Real PE for this stock should
-        # be readable from the scraped PE field.
-        # ── PAT scale vs Market Cap plausibility ──────────────────────
-        pat_latest  = pat_vals[-1] if pat_vals else None
-        pe_scraped  = _safe(row.get("PE"))
-        mc_check    = _safe(row.get("MARKET_CAP_CR"))
+
+        pat_latest = pat_vals[-1]
+        pe_scraped = _safe(row.get("PE"))
+        mc_check   = _safe(row.get("MARKET_CAP_CR"))
 
         if pat_latest and pat_latest > 0 and mc_check and mc_check > 0:
             our_implied_pe = mc_check / pat_latest
-
-            # Guard 1: implied PE < 1 → PAT wrong order of magnitude
             if our_implied_pe < 1.0:
                 return None
-
-            # Guard 2: scraped PE vs our implied PE diverge massively
-            if pe_scraped and pe_scraped > 0:
-                if our_implied_pe < pe_scraped * 0.15:
-                    return None
-
-            # Guard 3: impossible PAT CAGR
+            if pe_scraped and pe_scraped > 0 and our_implied_pe < pe_scraped * 0.15:
+                return None
             pat_cagr = _safe(row.get("PAT_CAGR_3YR_PCT"))
             if pat_cagr and pat_cagr > 500:
                 return None
 
-        # Guard 4: EPS-based PE cross-check (catches TMPV specifically)
-        # Our EPS vs CMP should give roughly the same PE as scraped
         core_eps = _safe(row.get("CORE_EPS")) or _safe(row.get("PL_EPS_BASIC"))
-        cmp_val  = _safe(row.get("CMP"))
         if core_eps and core_eps > 0 and cmp_val and cmp_val > 0 and pe_scraped and pe_scraped > 0:
-            our_eps_pe = cmp_val / core_eps
-            # If our EPS implies a PE less than 30% of scraped PE,
-            # our EPS is inflated (from wrong entity)
-            if our_eps_pe < pe_scraped * 0.30:
+            if (cmp_val / core_eps) < pe_scraped * 0.30:
                 return None
-
-        # 🔥 lowest std deviation subset (your edge)
 
         if len(pat_vals) >= 3:
-            neg_ratio = sum(1 for p in pat_vals if p <= 0) / len(pat_vals)
-            if neg_ratio > 0.5:
+            if sum(1 for p in pat_vals if p <= 0) / len(pat_vals) > 0.5:
                 return None
 
-        # ── Single-year spike guard ────────────────────────────────────
-        # If latest PAT is more than 3x the prior year, it's likely
-        # a demerger adjustment or one-time item — don't trust it.
-        # ── Single-year spike guard ────────────────────────────────────
-        # Only reject PAT spikes for companies with SHORT history (< 3 yrs)
-        # Long-history companies can have genuine profit acceleration
         if len(pat_vals) == 2:
-            latest = pat_vals[-1]
-            prior  = pat_vals[-2]
-            # Only apply spike guard when history is thin (2 years only)
-            if prior and prior > 0 and latest > prior * 5:
+            l, p = pat_vals[-1], pat_vals[-2]
+            if p and p > 0 and l > p * 5:
                 return None
-            if prior and prior <= 0 and latest > 0:
+            if p and p <= 0 and l > 0:
                 return None
-        # For 3+ years, only reject if the AVERAGE growth is implausible
         elif len(pat_vals) >= 3:
-            latest = pat_vals[-1]
-            first  = pat_vals[0]
+            first = pat_vals[0]
             if first and first > 0:
-                total_growth = latest / first
-                years = len(pat_vals) - 1
-                # Only reject if CAGR implies >200% per year sustained
-                # (i.e. PAT grew >3x every single year — physically impossible
-                # for a real operating business, signals data error)
-                if total_growth > (4.0 ** years):
+                if pat_vals[-1] / first > (4.0 ** (len(pat_vals) - 1)):
                     return None
-            elif first and first <= 0 and latest > 0:
-                # Loss to profit is fine if they have 3+ years history
-                pass   # don't reject, let other guards handle it
 
-        # 🔥 lowest std deviation subset (your edge)
-        best_subset = None
-        best_std = float("inf")
-
-        for r in range(2, len(values) + 1):
-            for comb in itertools.combinations(values, r):
+        # ── Minimum-std subset ────────────────────────────────────────────
+        best_subset, best_std = None, float("inf")
+        for r_size in range(2, len(values) + 1):
+            for comb in itertools.combinations(values, r_size):
                 std = np.std(comb)
                 if std < best_std:
-                    best_std = std
-                    best_subset = comb
+                    best_std, best_subset = std, comb
 
         if not best_subset:
             return None
@@ -1571,65 +1449,32 @@ def compute_fair_values(df: pd.DataFrame) -> pd.DataFrame:
 
     df["COMPOSITE_FAIR_VALUE"] = df.apply(compute_composite, axis=1)
 
-    # ─────────────────────────────────────────────
-    # 📊 FV COUNT (valid models only)
-    # ─────────────────────────────────────────────
     df["FV_COUNT"] = df.apply(
-        lambda row: sum(
-            1 for c in fv_cols
-            if pd.notna(row[c]) and row[c] > 0
-        ),
+        lambda row: sum(1 for c in fv_cols if pd.notna(row[c]) and row[c] > 0),
         axis=1
     )
 
-    # ─────────────────────────────────────────────
-    # 💰 MARGIN OF SAFETY
-    # ─────────────────────────────────────────────
     cmp = df.get("CMP")
-
-    df["UPSIDE_PCT"] = (
-        (df["COMPOSITE_FAIR_VALUE"] - cmp) / cmp * 100
-    ).round(2)
-
+    df["UPSIDE_PCT"]          = ((df["COMPOSITE_FAIR_VALUE"] - cmp) / cmp * 100).round(2)
     df["MARGIN_OF_SAFETY_PCT"] = df["UPSIDE_PCT"]
 
-    # ─────────────────────────────────────────────
-    # 🏷️ FV GRADE
-    # ─────────────────────────────────────────────
     def fv_grade(v):
-        if pd.isna(v):
-            return "UNDETERMINED"
-
-        try:
-            v = float(v)
-        except:
-            return "UNDETERMINED"
-
-        if v >= 40:
-            return "DEEP VALUE"
-        elif v >= 25:
-            return "UNDERVALUED"
-        elif v >= 10:
-            return "FAIR"
-        elif v >= -10:
-            return "FULLY PRICED"
-        else:
-            return "OVERVALUED"
+        if pd.isna(v): return "UNDETERMINED"
+        try: v = float(v)
+        except: return "UNDETERMINED"
+        if v >= 40:  return "DEEP VALUE"
+        if v >= 25:  return "UNDERVALUED"
+        if v >= 10:  return "FAIR"
+        if v >= -10: return "FULLY PRICED"
+        return "OVERVALUED"
 
     df["FV_GRADE"] = df["MARGIN_OF_SAFETY_PCT"].apply(fv_grade)
-
     return df
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# STEP 4c — FINAL SCORE (ULTIMATE VERSION)
+# STEP 4c — FINAL SCORE
 # ══════════════════════════════════════════════════════════════════════════════
-
-CYCLICAL_SECTORS = [
-    "REAL ESTATE", "METALS", "MINING",
-    "CEMENT", "OIL & GAS", "POWER",
-    "INFRASTRUCTURE", "COMMODITIES"
-]
 
 def cyclical_penalty(row):
     sector = str(row.get("SECTOR", "")).upper()
@@ -1638,15 +1483,8 @@ def cyclical_penalty(row):
 
 def earnings_volatility(row):
     vals = [row[c] for c in row.index if "A_PL_PAT_CR_" in c and pd.notna(row[c]) and row[c] > 0]
-    if len(vals) < 3:
-        return 0
-
-    std = np.std(vals)
-    mean = np.mean(vals)
-    if mean == 0:
-        return -10
-
-    cv = std / mean
+    if len(vals) < 3: return 0
+    cv = np.std(vals) / np.mean(vals) if np.mean(vals) != 0 else 99
     if cv < 0.2: return 10
     if cv < 0.4: return 5
     if cv < 0.7: return 0
@@ -1656,9 +1494,7 @@ def earnings_volatility(row):
 
 def fcf_consistency(row):
     vals = [row[c] for c in row.index if "C_CF_FCF_CR_" in c and pd.notna(row[c])]
-    if len(vals) < 3:
-        return 0
-
+    if len(vals) < 3: return 0
     pos = sum(1 for v in vals if v > 0)
     if pos >= 5: return 10
     if pos >= 3: return 5
@@ -1668,37 +1504,20 @@ def fcf_consistency(row):
 
 def fraud_penalty(row):
     penalty = 0
-
-    if row.get("OTHER_INCOME_TO_PBT_PCT", 0) > 50:
-        penalty -= 10
-
-    if row.get("CWIP_TO_NETBLOCK_PCT", 0) > 50:
-        penalty -= 5
-
+    if row.get("OTHER_INCOME_TO_PBT_PCT", 0) > 50: penalty -= 10
+    if row.get("CWIP_TO_NETBLOCK_PCT",     0) > 50: penalty -= 5
     ocf = row.get("CF_OPERATING_CR")
     pat = row.get("PL_PAT_CR")
-    if ocf and pat and ocf < pat * 0.5:
-        penalty -= 10
-
-    if row.get("DEBTOR_DAYS", 0) > 120:
-        penalty -= 5
-
+    if ocf and pat and ocf < pat * 0.5: penalty -= 10
+    if row.get("DEBTOR_DAYS", 0) > 120:  penalty -= 5
     return penalty
 
 
 def missing_data_penalty(row):
-    critical = [
-        "PE", "ROE_PCT", "DEBT_TO_EQUITY",
-        "REVENUE_CAGR_3YR_PCT",
-        "PAT_CAGR_3YR_PCT",
-        "COMPOSITE_FAIR_VALUE"
-    ]
-
-    missing = sum(
-        1 for f in critical
-        if row.get(f) is None or (isinstance(row.get(f), float) and pd.isna(row.get(f)))
-    )
-
+    critical = ["PE", "ROE_PCT", "DEBT_TO_EQUITY",
+                "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT", "COMPOSITE_FAIR_VALUE"]
+    missing = sum(1 for f in critical
+                  if row.get(f) is None or (isinstance(row.get(f), float) and pd.isna(row.get(f))))
     if missing >= 4: return -30
     if missing >= 2: return -15
     if missing >= 1: return -5
@@ -1707,59 +1526,53 @@ def missing_data_penalty(row):
 
 def piotroski_score(row):
     score = 0
-    if row.get("PL_PAT_CR", 0) > 0: score += 1
-    if row.get("CF_OPERATING_CR", 0) > 0: score += 1
-    if row.get("ROE_PCT", 0) > 15: score += 1
-    if row.get("DEBT_TO_EQUITY", 1) < 0.5: score += 1
-    if row.get("CURRENT_RATIO", 0) > 1: score += 1
+    if row.get("PL_PAT_CR",         0) > 0:  score += 1
+    if row.get("CF_OPERATING_CR",   0) > 0:  score += 1
+    if row.get("ROE_PCT",           0) > 15: score += 1
+    if row.get("DEBT_TO_EQUITY",    1) < 0.5: score += 1
+    if row.get("CURRENT_RATIO",     0) > 1:  score += 1
     if row.get("PROMOTER_HOLDING_PCT", 0) > 50: score += 1
-    if row.get("OPM_CALC_PCT", 0) > 15: score += 1
-    if row.get("ASSET_TURNOVER", 0) > 1: score += 1
+    if row.get("OPM_CALC_PCT",      0) > 15: score += 1
+    if row.get("ASSET_TURNOVER",    0) > 1:  score += 1
     return score
 
 
 def compute_final_score(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    # Drop stale final score columns from previous runs
-    stale = [c for c in df.columns if c in [
-        "FINAL_SCORE", "FINAL_RANK", "GRADE", "DATA_QUALITY", "F_SCORE"
-    ]]
+    stale = [c for c in df.columns if c in ["FINAL_SCORE", "FINAL_RANK", "GRADE", "DATA_QUALITY", "F_SCORE"]]
     df.drop(columns=stale, inplace=True, errors="ignore")
 
     def get_col(name):
         for c in df.columns:
             if name.upper() in c.upper():
                 return df[c]
-        return pd.Series([0]*len(df))
+        return pd.Series([0] * len(df))
 
-    val_score = get_col("VALUATION_SCORE_PCT").fillna(0)
-    mos = get_col("MARGIN_OF_SAFETY_PCT").fillna(0).clip(-50, 100)
-
-    roe = get_col("ROE_PCT").fillna(0)
-    roce = get_col("ROCE_PCT").fillna(0)
-    opm = get_col("OPM").fillna(0)
-    npm = get_col("NET_MARGIN").fillna(0)
-
+    val_score  = get_col("VALUATION_SCORE_PCT").fillna(0)
+    mos        = get_col("MARGIN_OF_SAFETY_PCT").fillna(0).clip(-50, 100)
+    roe        = get_col("ROE_PCT").fillna(0)
+    roce       = get_col("ROCE_PCT").fillna(0)
+    opm        = get_col("OPM").fillna(0)
+    npm        = get_col("NET_MARGIN").fillna(0)
     rev_growth = get_col("REVENUE_CAGR_3YR").fillna(0)
     pat_growth = get_col("PAT_CAGR_3YR").fillna(0)
-
-    debt = get_col("DEBT_TO_EQUITY").fillna(1)
-    interest = get_col("INTEREST_COVERAGE").fillna(0)
+    debt       = get_col("DEBT_TO_EQUITY").fillna(1)
+    interest   = get_col("INTEREST_COVERAGE").fillna(0)
 
     quality = roe*0.3 + roce*0.3 + opm*0.2 + npm*0.2
-    growth = rev_growth*0.4 + pat_growth*0.6
-    safety = (1/(1+debt))*50 + interest.clip(0,10)*5
+    growth  = rev_growth*0.4 + pat_growth*0.6
+    safety  = (1 / (1 + debt)) * 50 + interest.clip(0, 10) * 5
 
     df["F_SCORE"] = df.apply(piotroski_score, axis=1)
 
     df["FINAL_SCORE"] = (
-        val_score  * 0.20 +   # price cheapness (reduced — traps score well here)
-        mos        * 0.20 +   # fair value upside (reduced for same reason)
-        quality    * 0.25 +   # ROE/ROCE/margins (raised — quality matters most)
-        growth     * 0.15 +   # revenue + PAT CAGR (raised — growth = moat proxy)
-        safety     * 0.10 +   # debt safety
-        df["F_SCORE"] * 2.5 + # Piotroski (raised weight slightly)
+        val_score * 0.20 +
+        mos       * 0.20 +
+        quality   * 0.25 +
+        growth    * 0.15 +
+        safety    * 0.10 +
+        df["F_SCORE"] * 2.5 +
         df.apply(cyclical_penalty,    axis=1) +
         df.apply(earnings_volatility, axis=1) +
         df.apply(fcf_consistency,     axis=1) +
@@ -1774,16 +1587,14 @@ def compute_final_score(df: pd.DataFrame) -> pd.DataFrame:
 
     def grade(s):
         if pd.isna(s): return "F"
-        if s >= 80: return "A"
-        if s >= 65: return "B"
-        if s >= 50: return "C"
-        if s >= 35: return "D"
+        if s >= 80:    return "A"
+        if s >= 65:    return "B"
+        if s >= 50:    return "C"
+        if s >= 35:    return "D"
         return "E"
 
     df["GRADE"] = df["FINAL_SCORE"].apply(grade)
-
     return df
-    
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1791,31 +1602,18 @@ def compute_final_score(df: pd.DataFrame) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def print_summary(df: pd.DataFrame, n: int = 20):
-
     cols = [
-        "SYMBOL",
-        "CMP",
-        "COMPOSITE_FAIR_VALUE",
-        "UPSIDE_PCT", 
-        "PE",
-        "ROE_PCT",
-        "DEBT_TO_EQUITY",
-        "REVENUE_CAGR_3YR_PCT",
-        "PAT_CAGR_3YR_PCT",
-        "FCF_YIELD_PCT",
-        "MARGIN_OF_SAFETY_PCT",
-        "FINAL_SCORE",
-        "GRADE"
+        "SYMBOL", "CMP", "COMPOSITE_FAIR_VALUE", "UPSIDE_PCT",
+        "PE", "ROE_PCT", "DEBT_TO_EQUITY",
+        "REVENUE_CAGR_3YR_PCT", "PAT_CAGR_3YR_PCT",
+        "FCF_YIELD_PCT", "MARGIN_OF_SAFETY_PCT",
+        "FINAL_SCORE", "GRADE"
     ]
-
     cols = [c for c in cols if c in df.columns]
-
-    top = df.sort_values("FINAL_SCORE", ascending=False).head(n)
-
+    top  = df.sort_values("FINAL_SCORE", ascending=False).head(n)
     print("\n" + "="*100)
     print(f"🏆 TOP {n} VALUE STOCKS (CLEAN VIEW)")
     print("="*100)
-
     print(top[cols].to_string(index=False))
 
 
@@ -1825,21 +1623,15 @@ def print_summary(df: pd.DataFrame, n: int = 20):
 
 def main():
     ap = argparse.ArgumentParser(description="Nifty 500 COMPLETE Fundamental + Valuation Pipeline")
-    ap.add_argument("--limit",         type=int,   default=None,
-                    help="Process only first N stocks (for testing)")
-    ap.add_argument("--delay",         type=float, default=REQUEST_DELAY,
-                    help=f"Seconds between requests (default {REQUEST_DELAY})")
+    ap.add_argument("--limit",         type=int,   default=None)
+    ap.add_argument("--delay",         type=float, default=REQUEST_DELAY)
     ap.add_argument("--output",        default=OUTPUT_FILE)
-    ap.add_argument("--skip-fetch",    action="store_true",
-                    help="Skip ALL downloading — go straight to scoring")
-    ap.add_argument("--force-refresh", action="store_true",
-                    help="Wipe CSV and re-download everything from scratch")
+    ap.add_argument("--skip-fetch",    action="store_true")
+    ap.add_argument("--force-refresh", action="store_true")
     ap.add_argument("--top",           type=int,   default=50)
     args = ap.parse_args()
     out  = args.output
 
-    # ── Determine whether to download ────────────────────────────────────────
-    # Priority: command-line flag > SKIP_DOWNLOAD variable > age check
     do_download = True
 
     if args.skip_fetch or SKIP_DOWNLOAD:
@@ -1854,12 +1646,10 @@ def main():
         age = _csv_age_days(out)
         if age is not None and age < REFRESH_DAYS:
             log.info(f"  CSV is {age} days old (< {REFRESH_DAYS} days) — skipping download")
-            log.info(f"  Set REFRESH_DAYS lower or use --force-refresh to re-download")
             do_download = True
         elif age is not None:
             log.info(f"  CSV is {age} days old (≥ {REFRESH_DAYS} days) — refreshing stale data")
 
-    # ── Download ──────────────────────────────────────────────────────────────
     if do_download:
         if not Path(out).exists() or args.force_refresh:
             log.info("Starting fresh download …")
@@ -1887,7 +1677,6 @@ def main():
         log.error("No data to score. Exiting.")
         sys.exit(1)
 
-    # ── Score & analyse ───────────────────────────────────────────────────────
     df = master.copy()
 
     log.info("Computing valuation scores …")
@@ -1895,37 +1684,34 @@ def main():
 
     log.info("Computing fair value models …")
     df = compute_fair_values(df)
-    
+
     log.info("Computing final composite score …")
     df = compute_final_score(df)
 
-    #df = df[df["COMPOSITE_FAIR_VALUE"].notna()]
     df.to_csv(out, index=False)
-
-    
     log.info(f"  ✓ Scored CSV → {out}  ({len(df)} rows × {len(df.columns)} cols)")
     print_summary(df, n=args.top)
     log.info("Done! 🎯")
-    fv_debug_cols = ["SYMBOL", "SCREENER_URL", "COMPOSITE_FAIR_VALUE", "CMP",
-                     "PE", "MARKET_CAP_CR", "PL_PAT_CR", "PL_PAT_REPORTED_CR",
-                     "SHARES_CR", "PL_EPS_BASIC", "CORE_EPS",
-                     "CF_FCF_CR", "CF_FCF_3YR_AVG_CR", "BOOK_VALUE", "ROE_PCT",
-                     "INDUSTRY_PE", "PL_EBITDA_CR",
-                     "A_PL_PAT_CR_MAR2025", "A_PL_PAT_CR_MAR2024",
-                     "A_PL_PAT_CR_MAR2023", "A_PL_PAT_CR_MAR2022",
-                     "A_PL_PAT_CR_MAR2021"] + list(FV_MODELS.keys())
+
+    # ── Debug columns (uncomment specific stocks to inspect) ─────────────
+    fv_debug_cols = [
+        "SYMBOL", "SCREENER_URL", "COMPOSITE_FAIR_VALUE", "CMP",
+        "PE", "MARKET_CAP_CR", "PL_PAT_CR", "PL_PAT_REPORTED_CR",
+        "SHARES_CR", "PL_EPS_BASIC", "CORE_EPS",
+        "CF_FCF_CR", "CF_FCF_3YR_AVG_CR", "BOOK_VALUE", "ROE_PCT",
+        "OTHER_INCOME_TO_PBT_PCT", "INDUSTRY_PE", "PL_EBITDA_CR",
+        "A_PL_PAT_CR_MAR2025", "A_PL_PAT_CR_MAR2024",
+        "A_PL_PAT_CR_MAR2023", "A_PL_PAT_CR_MAR2022",
+        "A_PL_PAT_CR_MAR2021",
+    ] + list(FV_MODELS.keys())
     fv_debug_cols = [c for c in fv_debug_cols if c in df.columns]
 
-    #for sym in ["ABDL", "TRENT", "COLPAL", "BRITANNIA", "ITC", "TMPV"]:
-        #print(f"\n{'='*60}")
-        #print(f"── {sym} DEBUG ──")
-        #row = df.loc[df["SYMBOL"]==sym]
-        #if not row.empty:
-            #print(row[fv_debug_cols].T.to_string())
-        #else:
-            #print("  NOT FOUND")
-
-    
+    # Uncomment to debug a specific stock:
+    # for sym in ["ASHOKA", "TRENT", "COLPAL", "BRITANNIA", "ITC"]:
+    #     row = df.loc[df["SYMBOL"] == sym]
+    #     if not row.empty:
+    #         print(f"\n{'='*60}\n── {sym} DEBUG ──")
+    #         print(row[fv_debug_cols].T.to_string())
 
 
 if __name__ == "__main__":
