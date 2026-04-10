@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    # 📰 News only — 00:00 IST (18:30 UTC previous day)
+    # 📰 00:00 IST (18:30 UTC previous day)
     - cron: "30 18 * * *"
 
     # 📊 Trading day runs (Mon–Fri)
@@ -56,28 +56,20 @@ jobs:
           IST_TOTAL=$((IST_H * 60 + IST_M))
           echo "IST time in minutes: $IST_TOTAL"
 
-          # 📰 Midnight window (00:00–00:05 IST) → news only
-          if [ "$IST_TOTAL" -le 5 ]; then
-            echo "mode=news" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # 🚀 Manual force-full trigger
+          # 🚀 Manual force-full trigger (from OPC server or manual)
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
             echo "mode=full" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # ⏱ Full run windows (±7 min around each target)
-          # 555 = 09:15, 675 = 11:15, 795 = 13:15, 870 = 14:30, 930 = 15:30
-          for t in 555 675 795 870 930; do
-            DIFF=$((IST_TOTAL - t))
-            if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
-              echo "mode=full" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          done
+          # ⏱ Full run window — 15:30 IST only (930 min ± 7)
+          DIFF=$((IST_TOTAL - 930))
+          if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
+            echo "mode=full" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
+          # Everything else → light (includes midnight, all trading crons)
           echo "mode=light" >> $GITHUB_OUTPUT
 
       # ───────────────────────────────────────────
@@ -98,12 +90,8 @@ jobs:
           python -u fetch_news.py
           python build.py
 
-      - name: "📰 News only"
-        if: steps.mode.outputs.mode == 'news'
-        run: python -u fetch_news.py
-
       # ───────────────────────────────────────────
-      # 4. COMMIT & PUSH
+      # 4. COMMIT & PUSH (both modes)
       # ───────────────────────────────────────────
       - name: Commit & push changes
         continue-on-error: true
@@ -126,7 +114,7 @@ jobs:
           git push origin main || true
 
       # ───────────────────────────────────────────
-      # 5. FIREBASE DEPLOY
+      # 5. FIREBASE DEPLOY (both modes, always silent)
       # ───────────────────────────────────────────
       - name: Setup Firebase
         run: |
@@ -136,14 +124,17 @@ jobs:
       - name: Deploy to Firebase Hosting
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
-        run: firebase deploy --project hnimanshu --only hosting --non-interactive
+        run: firebase deploy --project hnimanshu --only hosting --non-interactive 2>/dev/null
 
       # ───────────────────────────────────────────
-      # 6. TELEGRAM NOTIFICATION
+      # 6. TELEGRAM — full run only (15:30 / OPC trigger)
       # ───────────────────────────────────────────
       - name: "📩 Telegram — full run success"
         if: steps.mode.outputs.mode == 'full' && success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT:  ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
-            -d chat_id="-1002683944312" \
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT}" \
             -d text="https://hnimanshu-value.web.app/ %0A%0AFull update completed 🚀"
