@@ -1,197 +1,155 @@
 name: Smart Build & Deploy
 
 permissions:
-  contents: write
+contents: write
 
 on:
-  schedule:
-    - cron: "45 3 * * 1-5"    # 09:15 IST
-    - cron: "45 4 * * 1-5"
-    - cron: "45 7 * * 1-5"
-    - cron: "00 8 * * 1-5"
-    
+schedule:
+- cron: "30 18 * * *"    # 00:00 IST (previous day UTC)
+- cron: "45 3 * * 1-5"   # 09:15 IST
+- cron: "45 4 * * 1-5"   # 10:15 IST
+- cron: "45 7 * * 1-5"   # 13:15 IST
+- cron: "00 8 * * 1-5"   # 13:30 IST
 
-  workflow_dispatch:
-    inputs:
-      force_full:
-        description: "Force FULL run (1 = yes, 0 = no)"
-        required: false
-        default: "0"
+workflow_dispatch:
+inputs:
+force_full:
+description: "Force FULL run (1 = yes, 0 = no)"
+required: false
+default: "0"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      # 📦 Checkout repo
-      - name: Checkout code
-        uses: actions/checkout@v4
+```
+steps:
+  # 📦 Checkout repo
+  - name: Checkout code
+    uses: actions/checkout@v4
 
-      # 🐍 Setup Python
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+  # 🐍 Setup Python
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: "3.11"
 
-      # 📚 Install dependencies
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install requests pandas numpy beautifulsoup4 lxml tqdm gnews
+  # 📚 Install dependencies
+  - name: Install dependencies
+    run: |
+      pip install -r requirements.txt
+      pip install requests pandas numpy beautifulsoup4 lxml tqdm gnews
 
-      # 🛑 HARD TIME GATE (EXIT if blocked)
-      - name: Time Gate (IST)
-        id: timegate
-        run: |
-          IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
-          IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
-          IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
+  # 🧠 Decide mode (FULL / LIGHT / NEWS_ONLY)
+  - name: Decide execution mode
+    id: mode
+    run: |
+      FORCE="${{ github.event.inputs.force_full }}"
+      EVENT="${{ github.event_name }}"
 
-          DAY=$(TZ="Asia/Kolkata" date +"%u")  # 1=Mon ... 6=Sat, 7=Sun
+      IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
+      IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
+      IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
 
-          echo "Current IST: $IST_HOUR:$IST_MIN (total=$IST_TOTAL)"
+      echo "IST_TOTAL: $IST_TOTAL"
 
-          FORCE="${{ github.event.inputs.force_full }}"
-          EVENT="${{ github.event_name }}"
+      # 00:00 IST → NEWS ONLY
+      if [ "$IST_TOTAL" -ge 0 ] && [ "$IST_TOTAL" -le 5 ]; then
+        echo "mode=news" >> $GITHUB_OUTPUT
+        echo "📰 News-only run"
+        exit 0
+      fi
 
-          # 🚫 Block 15:25–17:00 IST
-          BLOCK_START=$((15 * 60 + 25))  # 925 min
-          BLOCK_END=$((17 * 60 + 0))     # 1020 min
+      # Force FULL
+      if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
+        echo "mode=full" >> $GITHUB_OUTPUT
+        exit 0
+      fi
 
-          # ✅ Exception: always allow 14:59–15:05 IST
-          EXCEPT_START=$((14 * 60 + 59))  # 899 min
-          EXCEPT_END=$((15 * 60 + 5))     # 905 min
+      # Full run windows
+      FULL_TIMES="555 675 795 870 930"
+      RUN_FULL=false
 
-          # ✅ Exception: always allow 15:25–15:35 IST (covers 15:30 full run)
-          EXCEPT2_START=$((15 * 60 + 25))  # 925 min
-          EXCEPT2_END=$((15 * 60 + 35))    # 935 min
+      for t in $FULL_TIMES; do
+        DIFF=$(( IST_TOTAL - t ))
+        if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
+          RUN_FULL=true
+          break
+        fi
+      done
 
-          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
-            echo "🚀 Forced run — bypassing time logic"
-            exit 0
-          fi
+      if [ "$RUN_FULL" = "true" ]; then
+        echo "mode=full" >> $GITHUB_OUTPUT
+      else
+        echo "mode=light" >> $GITHUB_OUTPUT
+      fi
 
-          if [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
-            echo "🚫 Weekend. Skipping."
-            exit 1
-          fi
+  # 🚀 FULL RUN
+  - name: Full Run
+    if: steps.mode.outputs.mode == 'full'
+    run: |
+      echo "Running FULL mode"
 
-          if [ "$IST_TOTAL" -ge "$EXCEPT_START" ] && [ "$IST_TOTAL" -le "$EXCEPT_END" ]; then
-            echo "✅ Exception window (14:59–15:05 IST). Allowing."
-            exit 0
-          fi
+      python -u fetch_news.py
+      python n500.py
+      python nm250.py
+      python ns500.py
+      python build.py
 
-          if [ "$IST_TOTAL" -ge "$EXCEPT2_START" ] && [ "$IST_TOTAL" -le "$EXCEPT2_END" ]; then
-            echo "✅ Exception window (15:25–15:35 IST). Allowing."
-            exit 0
-          fi
+  # ⚡ LIGHT RUN
+  - name: Light Run
+    if: steps.mode.outputs.mode == 'light'
+    run: |
+      echo "Running LIGHT mode"
 
-          if [ "$IST_TOTAL" -ge "$BLOCK_START" ] && [ "$IST_TOTAL" -lt "$BLOCK_END" ]; then
-            echo "🚫 Blocked time window (15:25–17:00 IST). Exiting."
-            exit 1
-          fi
+      python -u fetch_news.py
+      python build.py
 
-          echo "✅ Time check passed."
+  # 📰 NEWS ONLY (00:00 IST)
+  - name: News Only Run
+    if: steps.mode.outputs.mode == 'news'
+    run: |
+      echo "Running NEWS ONLY mode"
 
-      # 🧠 Decide mode (FULL vs LIGHT)
-      - name: Decide execution mode
-        id: timecheck
-        run: |
-          FORCE="${{ github.event.inputs.force_full }}"
-          EVENT="${{ github.event_name }}"
-          IST_HOUR=$(TZ="Asia/Kolkata" date +"%H")
-          IST_MIN=$(TZ="Asia/Kolkata" date +"%M")
-          IST_TOTAL=$((IST_HOUR * 60 + IST_MIN))
+      python -u fetch_news.py
 
-          echo "Force: $FORCE | Event: $EVENT | IST_TOTAL: $IST_TOTAL"
+  # 💾 Commit changes
+  - name: Commit and push
+    continue-on-error: true
+    run: |
+      git config --global user.name "github-actions"
+      git config --global user.email "actions@github.com"
 
-          # Force full via manual trigger
-          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" = "1" ]; then
-            echo "mode=full" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+      git stash
+      git pull origin main --rebase || true
+      git stash pop || true
 
-          # Full run windows (±7 min tolerance):
-          # 09:15=555, 11:15=675, 13:15=795, 14:30=870, 15:30=930
-          FULL_TIMES="555 675 795 870 930"
-          RUN_FULL=false
+      git add nifty500_valuation.csv niftymicrocap250_valuation.csv niftysmallcap500_valuation.csv multi_stock_news.csv public/index.html
 
-          for t in $FULL_TIMES; do
-            DIFF=$(( IST_TOTAL - t ))
-            if [ "$DIFF" -ge -7 ] && [ "$DIFF" -le 7 ]; then
-              RUN_FULL=true
-              break
-            fi
-          done
+      git diff --cached --quiet || git commit -m "Auto-update data [skip ci]"
+      git push origin main || true
 
-          if [ "$RUN_FULL" = "true" ]; then
-            echo "mode=full" >> $GITHUB_OUTPUT
-            echo "🚀 Full run window"
-          else
-            echo "mode=light" >> $GITHUB_OUTPUT
-            echo "⚡ Light run window"
-          fi
+  # 🔐 Firebase credentials
+  - name: Setup Firebase credentials
+    run: |
+      echo '${{ secrets.GOOGLE_CREDENTIALS }}' > serviceAccount.json
 
-      # 🚀 FULL RUN
-      - name: Full Run (Heavy Scripts + Telegram)
-        if: steps.timecheck.outputs.mode == 'full'
-        run: |
-          echo "Running FULL mode"
+  # 🔥 Install Firebase CLI
+  - name: Install Firebase
+    run: npm install -g firebase-tools
 
-          curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
-          -d chat_id="-1002683944312" \
-          -d text="Full update started..."
+  # 🚀 Deploy
+  - name: Deploy
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
+    run: |
+      firebase deploy --project hnimanshu --only hosting --non-interactive
 
-          python -u fetch_news.py || echo "news failed"
-          python n500.py || echo "n500 failed"
-          python nm250.py || echo "nm250 failed"
-          python ns500.py || echo "ns500 failed"
-          python build.py || echo "build failed"
-
-      # ⚡ LIGHT RUN (build + news only)
-      - name: Light Run (Build only)
-        if: steps.timecheck.outputs.mode == 'light'
-        run: |
-          echo "Running LIGHT mode"
-          python -u fetch_news.py || echo "news failed"
-          python build.py || echo "build failed"
-
-      # 💾 Commit changes
-      - name: Commit and push CSV + HTML
-        continue-on-error: true
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-
-          git stash
-          git pull origin main --rebase || echo "pull failed"
-          git stash pop
-
-          git add nifty500_valuation.csv niftymicrocap250_valuation.csv niftysmallcap500_valuation.csv multi_stock_news.csv public/index.html
-
-          git diff --cached --quiet || git commit -m "Auto-update data [skip ci]"
-          git push origin main || echo "push failed"
-
-      # 🔐 Setup Firebase credentials
-      - name: Setup Firebase credentials
-        run: |
-          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > serviceAccount.json
-
-      # 🔥 Install Firebase CLI
-      - name: Install Firebase
-        run: npm install -g firebase-tools
-
-      # 🚀 Deploy
-      - name: Deploy
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: serviceAccount.json
-        run: |
-          firebase deploy --project hnimanshu --only hosting --non-interactive || echo "deploy failed"
-
-      # 📩 Telegram after FULL run
-      - name: Telegram Done
-        if: steps.timecheck.outputs.mode == 'full'
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
-          -d chat_id="-1002683944312" \
-          -d text="https://hnimanshu-value.web.app/ %0A%0AFull update completed 🚀"
+  # 📩 Telegram ONLY if FULL + SUCCESS
+  - name: Telegram Success Message
+    if: steps.mode.outputs.mode == 'full' && success()
+    run: |
+      curl -s -X POST "https://api.telegram.org/bot5588744140:AAFMzYGBbQDzZ_hYDf9d1WSTHmC3I-Z3kZk/sendMessage" \
+      -d chat_id="-1002683944312" \
+      -d text="https://hnimanshu-value.web.app/ %0A%0AFull update completed 🚀"
+```
