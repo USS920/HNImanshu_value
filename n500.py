@@ -85,8 +85,8 @@ REQUEST_DELAY  = 1.5
 INDEX = "niftymicrocap250"
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}_list.csv"
 
-#INDEX = "niftysmallcap500"
-#NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
+INDEX = "niftysmallcap500"
+NSE_CSV_URL  = f"https://www.niftyindices.com/IndexConstituent/ind_{INDEX}_list.csv"
 
 INDEX = "nifty500"     # Keep all 3 lines; only the last assignment wins at runtime
 NSE_CSV_URL  = f"https://nsearchives.nseindia.com/content/indices/ind_{INDEX}list.csv"
@@ -268,7 +268,7 @@ def get_wacc(row) -> float:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fetch_nifty500() -> pd.DataFrame:
-    log.info("Fetching {INDEX} from NSE archives …")
+    log.info(f"Fetching {INDEX} from NSE archives …")
     s = requests.Session()
     s.headers.update(NSE_HDR)
     try:
