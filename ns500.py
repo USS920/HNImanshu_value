@@ -268,7 +268,7 @@ def get_wacc(row) -> float:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fetch_nifty500() -> pd.DataFrame:
-    log.info("Fetching {INDEX} from NSE archives …")
+    log.info(f"Fetching {INDEX} from NSE archives …")
     s = requests.Session()
     s.headers.update(NSE_HDR)
     try:
