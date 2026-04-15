@@ -96,9 +96,9 @@ OUTPUT_FILE = f"{INDEX}_valuation.csv"
 # ── Delete stale output at startup ───────────────────────────────────────────
 try:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
-    if ist_time.hour == 15:
+    if ist_time.hour == 15 or ist_time.hour == 16:
         os.remove(OUTPUT_FILE)
-        print(f"File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
+        print(f"{OUTPUT_FILE} File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 except Exception as e:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
     print(f"Delete failed at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST | Error: {e}")
@@ -268,7 +268,7 @@ def get_wacc(row) -> float:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fetch_nifty500() -> pd.DataFrame:
-    log.info("Fetching Nifty 500 from NSE archives …")
+    log.info("Fetching {INDEX} from NSE archives …")
     s = requests.Session()
     s.headers.update(NSE_HDR)
     try:
@@ -282,7 +282,7 @@ def fetch_nifty500() -> pd.DataFrame:
         log.info(f"  ✓ {len(df)} symbols")
         return df
     except Exception as e:
-        raise RuntimeError(f"Cannot fetch Nifty 500: {e}") from e
+        raise RuntimeError(f"Cannot fetch {INDEX}: {e}") from e
 
 
 # ══════════════════════════════════════════════════════════════════════════════
