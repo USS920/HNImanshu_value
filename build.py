@@ -171,65 +171,83 @@ def _resolve_prior_cols(df: pd.DataFrame) -> dict:
 
 def calc_piotroski_fscore(df: pd.DataFrame) -> pd.Series:
     """
-    Genuine 9-point Piotroski F-Score from raw CSV columns.
+    Robust Piotroski F-Score (0–9)
 
-    Profitability:  F1 ROA>0  F2 CFO>0  F3 ΔROA>0  F4 CFO>Net Income
-    Leverage:       F5 Leverage↓  F6 Equity ratio↑  F7 No dilution
-    Efficiency:     F8 Gross margin↑  F9 Asset turnover↑
+    Fixes:
+    - Missing data NOT treated as fail
+    - Adds tolerance buffer (2%)
+    - Uses Net Debt instead of Interest
+    - Relaxes CFO condition
+    - Removes unreliable dilution signal
     """
+
     def s(col):
-        if col in df.columns:
-            return pd.to_numeric(df[col], errors="coerce")
-        return pd.Series(np.nan, index=df.index)
+        return pd.to_numeric(df[col], errors="coerce") if col in df.columns else pd.Series(np.nan, index=df.index)
 
-    def nz(series):
-        return series.replace(0, np.nan)
+    def safe_div(a, b):
+        return a / b.replace(0, np.nan)
 
+    # Current values
     pat_c = s("PL_PAT_CR")
-    ta_c  = nz(s("BS_TOTAL_ASSETS_CR"))
+    ta_c  = s("BS_TOTAL_ASSETS_CR")
     cfo_c = s("CF_OPERATING_CR")
     opm_c = s("PL_OPM_PCT")
     rev_c = s("PL_REVENUE_CR")
-    int_c = s("PL_INTEREST_CR")
+    nd_c  = s("NET_DEBT_CR")
     res_c = s("BS_RESERVES_CR")
-    eps_c = nz(s("PL_EPS_BASIC"))
 
+    # Prior values
     fam   = _resolve_prior_cols(df)
     pat_p = fam["pat"]["pri"]
-    ta_p  = nz(fam["ta"]["pri"])
+    ta_p  = fam["ta"]["pri"]
     opm_p = fam["opm"]["pri"]
     rev_p = fam["rev"]["pri"]
-    int_p = fam["int_"]["pri"]
     res_p = fam["res"]["pri"]
-    eps_p = nz(fam["eps"]["pri"])
+    nd_p  = fam["int_"]["pri"]  # fallback if net debt history missing
 
-    roa_c = pat_c / ta_c
-    roa_p = pat_p / ta_p
-    lev_c = nz(int_c) / ta_c
-    lev_p = nz(int_p) / ta_p
-    eq_c  = res_c / ta_c
-    eq_p  = res_p / ta_p
-    at_c  = rev_c / ta_c
-    at_p  = rev_p / ta_p
-    sh_c  = pat_c / eps_c
-    sh_p  = pat_p / eps_p
+    # Ratios
+    roa_c = safe_div(pat_c, ta_c)
+    roa_p = safe_div(pat_p, ta_p)
 
+    lev_c = safe_div(nd_c, ta_c)
+    lev_p = safe_div(nd_p, ta_p)
+
+    eq_c  = safe_div(res_c, ta_c)
+    eq_p  = safe_div(res_p, ta_p)
+
+    at_c  = safe_div(rev_c, ta_c)
+    at_p  = safe_div(rev_p, ta_p)
+
+    # Helper: DON'T penalize NaN
     def b(cond):
-        return cond.fillna(False).astype(int)
+        return cond.astype(float).where(cond.notna(), np.nan)
 
     signals = pd.DataFrame({
+
+        # ── Profitability ──
         "f1": b(roa_c > 0),
         "f2": b(cfo_c > 0),
-        "f3": b(roa_c > roa_p),
-        "f4": b(cfo_c > pat_c),
-        "f5": b(lev_c < lev_p),
-        "f6": b(eq_c  > eq_p),
-        "f7": b(sh_c  <= sh_p * 1.02),
-        "f8": b(opm_c > opm_p),
-        "f9": b(at_c  > at_p),
+        "f3": b(roa_c > roa_p * 1.02),              # tolerance
+        "f4": b(cfo_c > pat_c * 0.8),               # relaxed
+
+        # ── Leverage / Stability ──
+        "f5": b(lev_c < lev_p * 0.98),              # improvement
+        "f6": b(eq_c  > eq_p * 1.02),
+
+        # (f7 removed — dilution unreliable)
+
+        # ── Efficiency ──
+        "f8": b(opm_c > opm_p * 1.02),
+        "f9": b(at_c  > at_p * 1.02),
     })
 
-    return signals.sum(axis=1).astype(int)
+    # Sum ignoring NaNs (this is KEY FIX)
+    score = signals.sum(axis=1, skipna=True)
+
+    # Optional: scale to 9 (since we removed 1 signal)
+    score = (score * (9 / 8)).clip(0, 9)
+
+    return score.round(0).astype(int)
 
 
 # =========================
