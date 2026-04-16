@@ -96,7 +96,7 @@ OUTPUT_FILE = f"{INDEX}_valuation.csv"
 # ── Delete stale output at startup ───────────────────────────────────────────
 try:
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
-    if ist_time.hour == 15 or ist_time.hour <= 16:
+    if ist_time.hour == 15 or ist_time.hour == 16:
         os.remove(OUTPUT_FILE)
         print(f"{OUTPUT_FILE} File deleted at {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 except Exception as e:
